@@ -1,0 +1,39 @@
+{
+  "name": "probo-reaper",
+  "version": "1.0.0",
+  "description": "Cleans up old Probo containers and ensures that only the allocated number of containers exist.",
+  "main": "index.js",
+  "bin": {
+    "probo-reaper": "./bin/reaper"
+  },
+  "scripts": {
+    "start": "./bin/reaper",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ProboCI/probo-reaper.git"
+  },
+  "keywords": [
+    "probo"
+  ],
+  "author": "Ilya Braude <ilya@bluenexa.com>",
+  "license": "Proprietary",
+  "bugs": {
+    "url": "https://github.com/ProboCI/probo-reaper/issues"
+  },
+  "homepage": "https://github.com/ProboCI/probo-reaper#readme",
+  "dependencies": {
+    "JSONStream": "^1.0.6",
+    "bluebird": "^3.0.5",
+    "co": "^4.6.0",
+    "co-read": "^0.1.1",
+    "github": "^0.2.4",
+    "lodash": "^3.10.1",
+    "request": "^2.65.0",
+    "request-promise": "^1.0.2",
+    "through2": "^2.0.0",
+    "yaml-config-loader": "^2.0.1",
+    "yargs": "^3.30.0"
+  }
+}
