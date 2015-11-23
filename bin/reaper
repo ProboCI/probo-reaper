@@ -1,39 +1,39 @@
 #! /usr/bin/env node
+'use strict';
 
-var path = require('path'),
-    util = require('util'),
-    fs = require('fs')
+var path = require('path');
+var util = require('util');
 
-var Loader = require('yaml-config-loader')
-var yargs = require('yargs')
-var loader = new Loader()
+var Loader = require('yaml-config-loader');
+var yargs = require('yargs');
+var loader = new Loader();
 
-var reaper = require('../lib/reaper')
+var reaper = require('../lib/reaper');
 
-loader.on('error', function(error){
+loader.on('error', function(error) {
   if (error.name === 'YAMLException') {
-    console.error(util.print('Error parsing YAML file `', error.filePath, '`:', error.reason))
-    console.log(error)
+    console.error(util.print('Error parsing YAML file `', error.filePath, '`:', error.reason));
+    console.log(error);
   }
-})
+});
 
 
 
-var argv = yargs
+let argv = yargs
   .describe('config', 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.')
   .alias('config', 'c')
-  .argv
+  .argv;
 
-loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')))
-loader.addAndNormalizeObject(process.env)
+loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')));
+loader.addAndNormalizeObject(process.env);
 
-var commandName = argv._[0]
+let commandName = argv._[0];
 
-loader.load(function(err, config){
-  if(err){
-    console.error(err)
-    process.exit(1)
+loader.load(function(err, config) {
+  if (err) {
+    console.error(err);
+    throw err;
   }
 
-  reaper.run(config)
-})
+  reaper.run(config);
+});
