@@ -17,15 +17,15 @@ describe('criteria', function(done) {
 
   it('merges results objects properly', function() {
     var result = {
-      array1: [{id: 'one'}], array2: []
+      array1: [{id: 'one'}], array2: [],
     };
 
     var ret = lib.merge(result, {
-      array1: [{id: 'two'}, {id: 'one'}], array2: [{id: 'three'}]
+      array1: [{id: 'two'}, {id: 'one'}], array2: [{id: 'three'}],
     });
 
     ret.should.eql({
-      array1: [{id: 'one'}, {id: 'two'}], array2: [{id: 'three'}]
+      array1: [{id: 'one'}, {id: 'two'}], array2: [{id: 'three'}],
     });
 
     ret.should.eql(result);
@@ -54,17 +54,17 @@ describe('criteria', function(done) {
     var project = projects[0];
 
     var criteria = {
-      pull_request: {
+      pullRequest: {
         open: {
-          max: 2
+          max: 2,
         },
         closed: {
-          max: 0
-        }
+          max: 0,
+        },
       },
       branch: {
-        max: 2
-      }
+        max: 2,
+      },
     };
 
     var applyCriteria = lib.apply;
@@ -84,7 +84,7 @@ describe('criteria', function(done) {
         'container 1',
         'container 4',
         'container 3',
-      ]
+      ],
     });
   });
 });
