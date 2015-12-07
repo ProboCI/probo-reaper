@@ -1,3 +1,5 @@
 # location of target Container Manager
 hostname: localhost
 port: 3020
+
+dryrun: true
