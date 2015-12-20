@@ -20,14 +20,41 @@ loader.on('error', function(error) {
 
 
 let argv = yargs
-  .describe('config', 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.')
-  .alias('config', 'c')
-  .argv;
+    .help('help')
+    .option('config', {
+      describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
+      alias: 'c',
+    })
+    .option('status', {
+      describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
+      alias: 's',
+    })
+    .option('dryrun', {
+      describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
+      type: 'boolean',
+      default: true,
+    })
+    .option('outputFormat', {
+      describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
+      default: 'text',
+      alias: ['output', 'o'],
+    })
+    .argv;
 
-loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')));
+loader.addSchema({
+  dryrun: Boolean,
+  status: Boolean,
+});
+
+loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')), {allowedKeys: true});
+if (argv.config) {
+  argv.config = Array.isArray(argv.config) ? argv.config : [argv.config];
+  argv.config.forEach(function(file) {
+    loader.addFile(path.resolve(file));
+  });
+}
 loader.addAndNormalizeObject(process.env);
-
-let commandName = argv._[0];
+loader.addAndNormalizeObject(argv);
 
 loader.load(function(err, config) {
   if (err) {
