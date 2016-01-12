@@ -19,27 +19,32 @@ loader.on('error', function(error) {
 
 
 
-let argv = yargs
-    .help('help')
-    .option('config', {
-      describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
-      alias: 'c',
-    })
-    .option('status', {
-      describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
-      alias: 's',
-    })
-    .option('dryrun', {
-      describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
-      type: 'boolean',
-      default: true,
-    })
-    .option('outputFormat', {
-      describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
-      default: 'text',
-      alias: ['output', 'o'],
-    })
-    .argv;
+yargs
+  .help('help')
+  .alias('help', 'h')
+  .option('config', {
+    describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
+    alias: 'c',
+  })
+  .option('status', {
+    describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
+    alias: 's',
+  })
+  .option('dryrun', {
+    describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
+    type: 'boolean',
+    default: true,
+  })
+  .option('output-format', {
+    describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
+    default: 'text',
+    alias: ['output', 'o'],
+  });
+var argv = yargs.argv;
+
+if (argv.help) {
+  yargs.showHelp();
+}
 
 loader.addSchema({
   dryrun: Boolean,
