@@ -25,14 +25,17 @@ function getTestBuildEvent(object) {
       id: 'project 1',
       organization: {
         id: 'organization 1',
+        subscription: {
+          rules: {},
+        },
       },
     },
     branch: {
       name: 'branch 1',
     },
     diskSpace: {
-      real: 10,
-      virtual: 100,
+      real: server.gigabytesToBytes(0.5),
+      virtual: server.gigabytesToBytes(1),
     },
   };
   return {build: _.merge(baseline, object)};
@@ -107,7 +110,8 @@ describe('Server', function() {
           subscription: {
             rules: {
               perBranchBuildLimit: 3,
-            }
+              diskSpace: -1,
+            },
           },
         },
       };
@@ -120,10 +124,6 @@ describe('Server', function() {
       stream.write(lastBranch1Build);
       var lastBranch2Build = getTestBuildEvent({id: 'build 10', createdAt: '2016-02-10T05:44:46.947Z', branch: {name: 'branch 2'}});
       stream.write(lastBranch2Build);
-      // TODO: It'd be great not to rely on a timeout here.
-      var eventHandler = function() {
-        server.removeListener(eventHandler);
-      };
       server.on('enforcementComplete', getEventCounter(10, function(triggeringBuild) {
         async.map([lastBranch1Build.build, lastBranch2Build.build, lastBranch3Build.build], server.getProjectBranchBuilds.bind(server), function(error, results) {
           results[0][0].value.id.should.equal('build 9');
@@ -138,9 +138,55 @@ describe('Server', function() {
         });
       }));
     });
-    it('should reap however many builds are necessary to get under the configured size limit');
-    it('should reap all builds ');
-    // TODO: When should we check? Ideally we subscribe to github events but we could miss one
+    it('should reap however many builds are necessary to get under the configured size limit for a given organization', function(done) {
+      var project = {
+        id: 'project 2',
+        organization: {
+          id: 'organization 2',
+          subscription: {
+            rules: {
+              diskSpace: 2,
+              perBranchBuildLimit: -1,
+            },
+          },
+        },
+      };
+      stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
+      stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
+      stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
+      stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}}));
+      stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
+      stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
+      stream.write(getTestBuildEvent({id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
+      stream.write(getTestBuildEvent({id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      stream.write(getTestBuildEvent({id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      stream.write(getTestBuildEvent({id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      stream.write(getTestBuildEvent({id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      server.on('enforcementComplete', getEventCounter(12, function(triggeringBuild) {
+        setTimeout(function() {
+          var tasks = {
+            allBuilds: server.getKeyAndValueArray.bind(server, 'build!!!', 'build!!~'),
+            organization1: server.getOrganizationBuilds.bind(server, 'organization 1'),
+            organization2: server.getOrganizationBuilds.bind(server, 'organization 2'),
+          };
+          async.parallel(tasks, function(error, results) {
+            should.not.exist(error);
+            results.allBuilds.length.should.equal(6);
+            results.organization1.length.should.equal(2);
+            // Verify that this organization is down to 2 gigabytes.
+            server.bytesToGigabytes(server.aggregateSize(results.organization2)).should.equal(2);
+            // Verify that this organization is down to 1 gigabytes.
+            server.bytesToGigabytes(server.aggregateSize(results.organization1)).should.equal(1);
+            results.organization2.length.should.equal(4);
+            done();
+          });
+        }, 200);
+      }));
+    });
+    it('should reap all builds older than a conifgurable time window');
+    // TODO: When should we check? Ideally we subscribe to provider (github/bitbucket) events but we could miss one so
+    // we may need/want to perform some kind of "true-up".
     it('should delete all environments for a pull request that has been closed');
   });
 });
