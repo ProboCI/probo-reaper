@@ -95,7 +95,7 @@ describe('Server', function() {
         });
       }));
     });
-    it.only('should reap all but the most recent X builds on a branch based on configuration', function(done) {
+    it('should reap all but the most recent X builds on a branch based on configuration', function(done) {
       stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
       stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 1'}}));
       stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', branch: {name: 'branch 2'}}));
@@ -115,7 +115,6 @@ describe('Server', function() {
       stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-06T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
       stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-07T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
       var lastBranch3Build = getTestBuildEvent({id: 'build 8', createdAt: '2016-02-08T05:44:46.947Z', branch: {name: 'branch 3'}, project});
-      console.log(lastBranch3Build.build.project.organization);
       stream.write(lastBranch3Build);
       var lastBranch1Build = getTestBuildEvent({id: 'build 9', createdAt: '2016-03-09T05:44:46.947Z', branch: {name: 'branch 1'}});
       stream.write(lastBranch1Build);
