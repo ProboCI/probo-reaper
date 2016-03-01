@@ -61,15 +61,15 @@ describe.only('Server', function() {
           cb();
         }, function(cb) {
           should.exist(server);
-          records.length.should.equal(9);
+          records.length.should.equal(8);
           records[0].key.should.equal('build!!build 1');
           records[1].key.should.equal('build!!build 2');
           records[2].key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 1');
           records[3].key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 2');
-          records[5].key.should.equal('organization_build!!organization 1!!build 1');
-          records[6].key.should.equal('organization_build!!organization 1!!build 2');
-          records[7].key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
-          records[8].key.should.equal('project_branch_build!!project 2!!branch 1!!2016-02-27T05:44:46.947Z!!build 2');
+          records[4].key.should.equal('organization_build!!organization 1!!build 1');
+          records[5].key.should.equal('organization_build!!organization 1!!build 2');
+          records[6].key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
+          records[7].key.should.equal('project_branch_build!!project 2!!branch 1!!2016-02-27T05:44:46.947Z!!build 2');
           cb();
           done();
         }));
