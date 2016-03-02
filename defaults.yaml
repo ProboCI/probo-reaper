@@ -13,3 +13,13 @@ outputFormat: text
 # only prints the current tree of projects, PRs/branches, and builds
 # implies dryrun=true
 status: false
+
+## Build server config
+dataDirectory: ./data
+eventStreams:
+  build_events:
+    plugin: Kafka
+    config:
+      topic: build_events
+      group: reaper
+      version: 1
