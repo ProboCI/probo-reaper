@@ -2,7 +2,7 @@
 hostname: localhost
 port: 3020
 
-dryrun: true
+dry-run: true
 
 # output format used for --status command:
 #  json: JSON output - one line per JSON object

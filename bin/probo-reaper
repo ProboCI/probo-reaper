@@ -4,11 +4,15 @@
 var path = require('path');
 var util = require('util');
 
+var eventbus = require('probo-eventbus');
 var Loader = require('yaml-config-loader');
 var yargs = require('yargs');
 var loader = new Loader();
+var bunyan = require('bunyan');
 
-var reaper = require('../lib/reaper');
+var lib = require('..');
+var reaper = lib.reaper;
+var Server = lib.Server;
 
 loader.on('error', function(error) {
   if (error.name === 'YAMLException') {
@@ -17,55 +21,109 @@ loader.on('error', function(error) {
   }
 });
 
-
-
-yargs
-  .help('help')
-  .alias('help', 'h')
-  .option('config', {
-    describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
-    alias: 'c',
-  })
-  .option('status', {
-    describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
-    alias: 's',
-  })
-  .option('dryrun', {
-    describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
-    type: 'boolean',
-    default: true,
-  })
-  .option('output-format', {
-    describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
-    default: 'text',
-    alias: ['output', 'o'],
-  });
-var argv = yargs.argv;
-
-if (argv.help) {
-  yargs.showHelp();
-}
-
-loader.addSchema({
-  dryrun: Boolean,
-  status: Boolean,
-});
-
-loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')), {allowedKeys: true});
-if (argv.config) {
-  argv.config = Array.isArray(argv.config) ? argv.config : [argv.config];
-  argv.config.forEach(function(file) {
-    loader.addFile(path.resolve(file));
-  });
-}
-loader.addAndNormalizeObject(process.env);
-loader.addAndNormalizeObject(argv);
-
-loader.load(function(err, config) {
-  if (err) {
-    console.error(err);
-    throw err;
+function cliProcessing(argv, done) {
+  if (argv.help) {
+    yargs.showHelp();
   }
 
-  reaper.run(config);
-});
+  loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')), {allowedKeys: true});
+  if (argv.config) {
+    argv.config = Array.isArray(argv.config) ? argv.config : [argv.config];
+    argv.config.forEach(function(file) {
+      loader.addFile(path.resolve(file));
+    });
+  }
+  loader.addAndNormalizeObject(process.env);
+  loader.addAndNormalizeObject(argv);
+
+  loader.load(done);
+}
+
+function reap() {
+  yargs
+    .help('help')
+    .alias('help', 'h')
+    .option('config', {
+      describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
+      alias: 'c',
+    })
+    .option('status', {
+      describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
+      alias: 's',
+    })
+    .option('dry-run', {
+      describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
+      type: 'boolean',
+      default: true,
+    })
+    .option('output-format', {
+      describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
+      default: 'text',
+      alias: ['output', 'o'],
+    });
+
+  loader.addSchema({
+    'dry-run': Boolean,
+    'status': Boolean,
+  });
+
+  cliProcessing(yargs.argv, function(error, config) {
+    if (error) {
+      console.error(error);
+      throw error;
+    }
+    reaper.run(config);
+  });
+}
+
+function server() {
+  yargs
+    .help('help')
+    .alias('help', 'h')
+    .option('config', {
+      describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
+      alias: 'c',
+    })
+    .options('data-directory', {
+      describe: 'The directory in which to store leveldb data.',
+      alias: 'd',
+    });
+
+  cliProcessing(yargs.argv, function(error, config) {
+    if (error) {
+      console.error(error);
+      throw error;
+    }
+    var consumerOptions
+    var consumer = new eventbus.plugins.Kafka.Consumer({group: 'reaper', topic: 'build_events', version: 1});
+    var options = {
+      consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
+      consumer,
+      dataDirectory: config.dataDirectory,
+      logger: bunyan.createLogger({name: 'reaper'}),
+    };
+    var through2 = require('through2');
+
+    /*
+    options.consumer.stream.pipe(through2.obj(function(data, enc, cb) {
+      cb(null, JSON.stringify(data) + require('os').EOL);
+    })).pipe(process.stdout);
+    // */
+    server = new Server(options);
+    server.start();
+  });
+}
+
+// TODO: We should factor out the subcommand handling in probo into its own project
+// to better enable these fluent style interfaces in a more generic way.
+var command = yargs.argv._[0]
+if (command == 'reap') {
+  reap();
+}
+else if (command == 'server') {
+  server();
+}
+else {
+  console.error('You must specify `reap` to run a reap on all old builds or `server` to start the listener.');
+  console.error('For more help run `probo-reaper server -h` or `probo-reaper reap -h` for more detailed help.');
+}
