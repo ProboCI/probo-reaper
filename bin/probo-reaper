@@ -101,6 +101,7 @@ function server() {
       consumer,
       dataDirectory: config.dataDirectory,
       logger: bunyan.createLogger({name: 'reaper'}),
+      containerManagerUrl: `http://${config.hostname}:${config.port}`,
     };
     var through2 = require('through2');
 
