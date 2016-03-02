@@ -9,6 +9,7 @@ var lib = require('..');
 var Server = lib.Server;
 var through2 = require('through2');
 var async = require('async');
+var bunyan = require('bunyan');
 
 // We use a simple method to reset the world between tests by
 // using global variables.
@@ -37,8 +38,11 @@ function getTestBuildEvent(object) {
       real: server.gigabytesToBytes(0.5),
       virtual: server.gigabytesToBytes(1),
     },
+    container: {
+      id: 'some container',
+    },
   };
-  return {build: _.merge(baseline, object)};
+  return {build: _.merge(baseline, object), event: 'ready'};
 }
 
 function getEventCounter(number, done) {
@@ -61,7 +65,9 @@ describe('Server', function() {
       var options = {
         level: storage,
         consumer: new eventbus.plugins.Memory.Consumer({stream}),
+        log: bunyan.createLogger({name: 'reaper-tests'}),
       };
+      options.log._level = Number.POSITIVE_INFINITY;
       server = new Server(options);
       server.start(done);
     });
