@@ -11,8 +11,10 @@ outputFormat: text
 
 # normally used as a commandline arg: ./bin/reaper --status
 # only prints the current tree of projects, PRs/branches, and builds
-# implies dryrun=true
+# implies dry-run=true
 status: false
+
+githubPrCacheFile: prCache.json
 
 ## Build server config
 dataDirectory: ./data
