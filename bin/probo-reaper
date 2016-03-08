@@ -97,21 +97,13 @@ function server() {
     var consumerOptions
     var consumer = new eventbus.plugins.Kafka.Consumer({group: 'reaper', topic: 'build_events', version: 1});
     var options = {
-      consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
       consumer,
       dataDirectory: config.dataDirectory,
       logger: bunyan.createLogger({name: 'reaper'}),
       containerManagerUrl: `http://${config.hostname}:${config.port}`,
     };
-    var through2 = require('through2');
-
-    /*
-    options.consumer.stream.pipe(through2.obj(function(data, enc, cb) {
-      cb(null, JSON.stringify(data) + require('os').EOL);
-    })).pipe(process.stdout);
-    // */
-    server = new Server(options);
-    server.start();
+    var reaperServer = new Server(options);
+    reaperServer.start();
   });
 }
 
