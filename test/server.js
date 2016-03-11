@@ -35,8 +35,8 @@ function getTestBuildEvent(object) {
       name: 'branch 1',
     },
     diskSpace: {
-      real: server.gigabytesToBytes(0.5),
-      virtual: server.gigabytesToBytes(1),
+      realBytes: server.gigabytesToBytes(0.5),
+      virtualBytes: server.gigabytesToBytes(1),
     },
     container: {
       id: 'some container',
