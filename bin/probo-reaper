@@ -94,10 +94,8 @@ function server() {
       console.error(error);
       throw error;
     }
-    var consumerOptions
-    var consumer = new eventbus.plugins.Kafka.Consumer({group: 'reaper', topic: 'build_events', version: 1});
     var options = {
-      consumer,
+      consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
       dataDirectory: config.dataDirectory,
       logger: bunyan.createLogger({name: 'reaper'}),
       containerManagerUrl: `http://${config.hostname}:${config.port}`,

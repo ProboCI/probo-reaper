@@ -20,8 +20,6 @@ githubPrCacheFile: prCache.json
 dataDirectory: ./data
 eventStreams:
   build_events:
-    plugin: Kafka
+    plugin: Memory
     config:
       topic: build_events
-      group: reaper
-      version: 1
