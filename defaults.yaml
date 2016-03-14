@@ -2,7 +2,7 @@
 hostname: localhost
 port: 3020
 
-dryrun: true
+dry-run: true
 
 # output format used for --status command:
 #  json: JSON output - one line per JSON object
@@ -11,5 +11,15 @@ outputFormat: text
 
 # normally used as a commandline arg: ./bin/reaper --status
 # only prints the current tree of projects, PRs/branches, and builds
-# implies dryrun=true
+# implies dry-run=true
 status: false
+
+githubPrCacheFile: prCache.json
+
+## Build server config
+dataDirectory: ./data
+eventStreams:
+  build_events:
+    plugin: Memory
+    config:
+      topic: build_events
