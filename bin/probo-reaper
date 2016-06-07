@@ -13,6 +13,7 @@ var bunyan = require('bunyan');
 var lib = require('..');
 var reaper = lib.reaper;
 var Server = lib.Server;
+var Database = lib.Database;
 
 loader.on('error', function(error) {
   if (error.name === 'YAMLException') {
@@ -37,6 +38,29 @@ function cliProcessing(argv, done) {
   loader.addAndNormalizeObject(argv);
 
   loader.load(done);
+}
+
+function backup() {
+  yargs
+    .help('help')
+    .alias('help', 'h')
+    .option('config', {
+      describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
+      alias: 'c',
+    })
+    .options('data-directory', {
+      describe: 'The directory in which the leveldb data resides.',
+      alias: 'd',
+    });
+
+  cliProcessing(yargs.argv, function(error, config) {
+    if (error) {
+      console.error(error);
+      throw error;
+    }
+    var db = new Database(config);
+    db.backup();
+  });
 }
 
 function reap() {
@@ -107,14 +131,39 @@ function server() {
 
 // TODO: We should factor out the subcommand handling in probo into its own project
 // to better enable these fluent style interfaces in a more generic way.
-var command = yargs.argv._[0]
-if (command == 'reap') {
-  reap();
-}
-else if (command == 'server') {
-  server();
-}
-else {
-  console.error('You must specify `reap` to run a reap on all old builds or `server` to start the listener.');
-  console.error('For more help run `probo-reaper server -h` or `probo-reaper reap -h` for more detailed help.');
+var command = yargs.argv._[0];
+switch (command) {
+  case 'reap':
+    reap();
+    break;
+
+  case 'server':
+    server();
+    break;
+
+  case 'db-export':
+    backup();
+    break;
+
+  default:
+    var validCommands = [
+      {
+        command: 'reap',
+        helpText: 'runs a reap on all old builds.',
+      },
+      {
+        command: 'server',
+        helpText: 'starts the listener which will enforce limits continuously.',
+      },
+      {
+        command: 'db-export',
+        helpText: 'exports the database for backups.',
+      },
+    ];
+    console.error('Invalid argument. Valid commands are:');
+    validCommands.forEach(function(val) {
+      console.error(`"${val.command}" - ${val.helpText}`);
+    });
+    console.error('For more help run any command with "-h" for more detailed help.');
+    break;
 }
