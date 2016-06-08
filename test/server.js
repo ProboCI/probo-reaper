@@ -46,11 +46,11 @@ function getTestBuildEvent(object) {
   return {build: _.merge(baseline, object), event: 'ready'};
 }
 
-function getEventCounter(number, done) {
+function getEventCounter(count, done) {
   var counter = 0;
   return function() {
     counter++;
-    if (counter === number) {
+    if (counter === count) {
       done();
     }
   };
