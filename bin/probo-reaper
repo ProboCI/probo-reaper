@@ -13,7 +13,6 @@ var bunyan = require('bunyan');
 var lib = require('..');
 var reaper = lib.reaper;
 var Server = lib.Server;
-var Database = lib.Database;
 
 loader.on('error', function(error) {
   if (error.name === 'YAMLException') {
@@ -38,29 +37,6 @@ function cliProcessing(argv, done) {
   loader.addAndNormalizeObject(argv);
 
   loader.load(done);
-}
-
-function backup() {
-  yargs
-    .help('help')
-    .alias('help', 'h')
-    .option('config', {
-      describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
-      alias: 'c',
-    })
-    .options('data-directory', {
-      describe: 'The directory in which the leveldb data resides.',
-      alias: 'd',
-    });
-
-  cliProcessing(yargs.argv, function(error, config) {
-    if (error) {
-      console.error(error);
-      throw error;
-    }
-    var db = new Database(config);
-    db.backup();
-  });
 }
 
 function reap() {
@@ -122,7 +98,9 @@ function server() {
       consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
       dataDirectory: config.dataDirectory,
       logger: bunyan.createLogger({name: 'reaper'}),
-      containerManagerUrl: `http://${config.hostname}:${config.port}`,
+      containerManagerUrl: `http://${config.cmHostname}:${config.cmPort}`,
+      apiServerHost: config.apiServerHost,
+      apiServerPort: config.apiServerPort,
     };
     var reaperServer = new Server(options);
     reaperServer.start();
@@ -141,10 +119,6 @@ switch (command) {
     server();
     break;
 
-  case 'db-export':
-    backup();
-    break;
-
   default:
     var validCommands = [
       {
@@ -154,10 +128,6 @@ switch (command) {
       {
         command: 'server',
         helpText: 'starts the listener which will enforce limits continuously.',
-      },
-      {
-        command: 'db-export',
-        helpText: 'exports the database for backups.',
       },
     ];
     console.error('Invalid argument. Valid commands are:');

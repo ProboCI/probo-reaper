@@ -10,6 +10,7 @@ var Server = lib.Server;
 var through2 = require('through2');
 var async = require('async');
 var bunyan = require('bunyan');
+var request = require('request');
 
 // We use a simple method to reset the world between tests by
 // using global variables.
@@ -57,6 +58,9 @@ function getEventCounter(number, done) {
 
 
 describe('Server', function() {
+  const apiServerHost = 'localhost';
+  const apiServerPort = 3038;
+
   describe('event storage', function() {
     beforeEach(function(done) {
       memdown.clearGlobalStore();
@@ -66,6 +70,8 @@ describe('Server', function() {
         level: storage,
         consumer: new eventbus.plugins.Memory.Consumer({stream}),
         log: bunyan.createLogger({name: 'reaper-tests'}),
+        apiServerHost: apiServerHost,
+        apiServerPort: apiServerPort,
       };
       options.log._level = Number.POSITIVE_INFINITY;
       server = new Server(options);
@@ -73,6 +79,21 @@ describe('Server', function() {
     });
     afterEach(function(done) {
       server.stop(done);
+    });
+    it('should export data', function(done) {
+      stream.write(getTestBuildEvent());
+      server.on('buildReceived', function() {
+        request(`http://${apiServerHost}:${apiServerPort}/api/export-data`, function(error, response, body) {
+          should.not.exist(error);
+          response.statusCode.should.equal(200);
+          body = body.split('\n');
+          JSON.parse(body[0]).key.should.equal('build!!build 1');
+          JSON.parse(body[1]).key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 1');
+          JSON.parse(body[2]).key.should.equal('organization_build!!organization 1!!2016-02-27T05:44:46.947Z!!build 1');
+          JSON.parse(body[3]).key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
+          done();
+        });
+      });
     });
     it('should store builds indexed by build id, date, organization, and branch', function(done) {
       stream.write(getTestBuildEvent());

@@ -1,6 +1,9 @@
 # location of target Container Manager
-hostname: localhost
-port: 3020
+cmHostname: localhost
+cmPort: 3020
+
+apiServerHost: localhost
+apiServerPort: 3038
 
 dry-run: true
 
