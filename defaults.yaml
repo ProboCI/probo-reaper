@@ -23,3 +23,7 @@ eventStreams:
     plugin: Memory
     config:
       topic: build_events
+
+codeHostingHandlers:
+  github: 'http://localhost:3010'
+  bitbucket: 'http://localhost:3012'
