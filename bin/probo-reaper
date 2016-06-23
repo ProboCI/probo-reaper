@@ -98,7 +98,9 @@ function server() {
       consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
       dataDirectory: config.dataDirectory,
       logger: bunyan.createLogger({name: 'reaper'}),
-      containerManagerUrl: `http://${config.hostname}:${config.port}`,
+      containerManagerUrl: `http://${config.cmHostname}:${config.cmPort}`,
+      apiServerHost: config.apiServerHost,
+      apiServerPort: config.apiServerPort,
     };
     var reaperServer = new Server(options);
     reaperServer.start();
@@ -107,14 +109,31 @@ function server() {
 
 // TODO: We should factor out the subcommand handling in probo into its own project
 // to better enable these fluent style interfaces in a more generic way.
-var command = yargs.argv._[0]
-if (command == 'reap') {
-  reap();
-}
-else if (command == 'server') {
-  server();
-}
-else {
-  console.error('You must specify `reap` to run a reap on all old builds or `server` to start the listener.');
-  console.error('For more help run `probo-reaper server -h` or `probo-reaper reap -h` for more detailed help.');
+var command = yargs.argv._[0];
+switch (command) {
+  case 'reap':
+    reap();
+    break;
+
+  case 'server':
+    server();
+    break;
+
+  default:
+    var validCommands = [
+      {
+        command: 'reap',
+        helpText: 'runs a reap on all old builds.',
+      },
+      {
+        command: 'server',
+        helpText: 'starts the listener which will enforce limits continuously.',
+      },
+    ];
+    console.error('Invalid argument. Valid commands are:');
+    validCommands.forEach(function(val) {
+      console.error(`"${val.command}" - ${val.helpText}`);
+    });
+    console.error('For more help run any command with "-h" for more detailed help.');
+    break;
 }
