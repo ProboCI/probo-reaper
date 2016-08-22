@@ -1,5 +1,6 @@
 /* eslint no-multi-spaces: 0, key-spacing: 0 */
 'use strict';
+var _ = require('lodash');
 
 // To test:
 // 1 - max per branch
@@ -42,18 +43,49 @@ describe('criteria', function(done) {
     applyMax.bind(null, [], 0).should.not.throw();
     applyMax.bind(null, [], 3).should.not.throw();
 
-    let array = [1, 2, 3, 4, 5];
-    applyMax(array,  0).should.eql({keep: [],              remove: [1, 2, 3, 4, 5]});
-    applyMax(array,  1).should.eql({keep: [1],             remove: [2, 3, 4, 5]});
-    applyMax(array,  2).should.eql({keep: [1, 2],          remove: [3, 4, 5]});
-    applyMax(array,  5).should.eql({keep: [1, 2, 3, 4, 5], remove: []});
-    applyMax(array, 10).should.eql({keep: [1, 2, 3, 4, 5], remove: []});
+    let array = _.map([1, 2, 3, 4, 5], function(num) {
+      return {id: num};
+    });
+
+    let getObjId = function(obj) {
+      return obj.id;
+    };
+
+    _.map(applyMax(array, 0).keep, getObjId)
+      .should.eql([]);
+
+    _.map(applyMax(array, 0).remove, getObjId)
+      .should.eql([1, 2, 3, 4, 5]);
+
+    _.map(applyMax(array, 1).keep, getObjId)
+      .should.eql([1]);
+
+    _.map(applyMax(array, 1).remove, getObjId)
+      .should.eql([2, 3, 4, 5]);
+
+    _.map(applyMax(array, 2).keep, getObjId)
+      .should.eql([1, 2]);
+
+    _.map(applyMax(array, 2).remove, getObjId)
+      .should.eql([3, 4, 5]);
+
+    _.map(applyMax(array, 5).keep, getObjId)
+      .should.eql([1, 2, 3, 4, 5]);
+
+    _.map(applyMax(array, 5).remove, getObjId)
+      .should.eql([]);
+
+    _.map(applyMax(array, 10).keep, getObjId)
+      .should.eql([1, 2, 3, 4, 5]);
+
+    _.map(applyMax(array, 10).remove, getObjId)
+      .should.eql([]);
   });
 
   it('criteria gets applied correctly', function() {
-    var project = projects[0];
+    let project = projects[0];
 
-    var criteria = {
+    let criteria = {
       pullRequest: {
         open: {
           max: 2,
@@ -67,24 +99,30 @@ describe('criteria', function(done) {
       },
     };
 
-    var applyCriteria = lib.apply;
+    let applyCriteria = lib.apply;
 
-    // missing criteria
+    // Missing criteria
     applyCriteria.bind(null, {}).should.throw('project and criteria are required.');
 
-    applyCriteria(project, criteria).should.eql({
-      remove: [
-        'container 0',
-        'container 6',
-        'container 5',
-        'container pre-3',
-      ],
-      keep: [
-        'container 2',
-        'container 1',
-        'container 4',
-        'container 3',
-      ],
-    });
+    let actions = applyCriteria(project, criteria);
+    actions.remove.map(function(obj) {
+      return obj.container.id;
+    })
+    .should.eql([
+      'container 0',
+      'container 6',
+      'container 5',
+      'container pre-3',
+    ]);
+
+    actions.keep.map(function(obj) {
+      return obj.container.id;
+    })
+    .should.eql([
+      'container 2',
+      'container 1',
+      'container 4',
+      'container 3',
+    ]);
   });
 });

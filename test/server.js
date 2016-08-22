@@ -16,7 +16,7 @@ var Server = lib.Server;
 
 nock('http://localhost:9631')
   .persist()
-  .delete('/containers/some%20container?force=true')
+  .delete(/\/containers\/some\%20container\?force\=true\&reason\=.*/)
   .reply(200);
 
 // We use a simple method to reset the world between tests by
