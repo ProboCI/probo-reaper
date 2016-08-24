@@ -53,11 +53,7 @@
             }
           }
         ],
-        "state": {
-          "number": 1,
-          "state": "open",
-          "title": "Pr 1"
-        }
+        "state": "open"
       },
       {
         "pr": "2",
@@ -77,11 +73,7 @@
             }
           }
         ],
-        "state": {
-          "number": 2,
-          "state": "closed",
-          "title": "Pr 2"
-        }
+        "state": "closed"
       }
     ],
     "branches": [
