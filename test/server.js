@@ -1,16 +1,23 @@
 'use strict';
 
-var _ = require('lodash');
-var should = require('should');
-var levelup = require('levelup');
-var memdown = require('memdown');
-var eventbus = require('probo-eventbus');
-var lib = require('..');
-var Server = lib.Server;
-var through2 = require('through2');
 var async = require('async');
 var bunyan = require('bunyan');
+var levelup = require('levelup');
+var _ = require('lodash');
+var memdown = require('memdown');
+var nock = require('nock');
+var eventbus = require('probo-eventbus');
 var request = require('request');
+var should = require('should');
+var through2 = require('through2');
+
+var lib = require('..');
+var Server = lib.Server;
+
+nock('http://localhost:9631')
+  .persist()
+  .delete('/containers/some%20container?force=true')
+  .reply(200);
 
 // We use a simple method to reset the world between tests by
 // using global variables.
@@ -60,6 +67,7 @@ function getEventCounter(count, done) {
 describe('Server', function() {
   const apiServerHost = 'localhost';
   const apiServerPort = 3038;
+  const containerManagerUrl = 'http://localhost:9631';
 
   describe('event storage', function() {
     beforeEach(function(done) {
@@ -72,6 +80,7 @@ describe('Server', function() {
         log: bunyan.createLogger({name: 'reaper-tests'}),
         apiServerHost: apiServerHost,
         apiServerPort: apiServerPort,
+        containerManagerUrl: containerManagerUrl,
       };
       options.log._level = Number.POSITIVE_INFINITY;
       server = new Server(options);
