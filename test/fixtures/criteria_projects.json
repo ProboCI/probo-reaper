@@ -1,108 +1,106 @@
-[
-  {
-    "id": "edca6416-5bba-4927-a03a-8d44c2c6540e",
-    "name": "test/testrepo",
-    "owner": "test",
-    "provider": {"slug": "github", "type": "github"},
-    "provider_id": 1,
-    "repo": "testrepo",
-    "repoId": "50ad26f9-98f1-4a49-9812-876addaf380d",
-    "slug": "test/testrepo",
-    "pullRequests": [
-      {
-        "pr": "undefined",
-        "builds": [
-          {
-            "id": "build 2",
-            "container": {
-              "id": "container 2",
-              "state": "stopped"
-            }
-          },
-          {
-            "id": "build 1",
-            "container": {
-              "id": "container 1",
-              "state": "stopped"
-            }
-          },
-          {
-            "id": "build 0",
-            "container": {
-              "id": "container 0",
-              "state": "stopped"
-            }
+{
+  "id": "edca6416-5bba-4927-a03a-8d44c2c6540e",
+  "name": "test/testrepo",
+  "owner": "test",
+  "provider": {"slug": "github", "type": "github"},
+  "provider_id": 1,
+  "repo": "testrepo",
+  "repoId": "50ad26f9-98f1-4a49-9812-876addaf380d",
+  "slug": "test/testrepo",
+  "pullRequests": [
+    {
+      "pr": "undefined",
+      "builds": [
+        {
+          "id": "build 2",
+          "container": {
+            "id": "container 2",
+            "state": "stopped"
           }
-        ]
-      },
-      {
-        "pr": "1",
-        "builds": [
-          {
-            "id": "build 4",
-            "container": {
-              "id": "container 4",
-              "state": "stopped"
-            }
-          },
-          {
-            "id": "build 3",
-            "container": {
-              "id": "container 3",
-              "state": "stopped"
-            }
+        },
+        {
+          "id": "build 1",
+          "container": {
+            "id": "container 1",
+            "state": "stopped"
           }
-        ],
-        "state": "open"
-      },
-      {
-        "pr": "2",
-        "builds": [
-          {
-            "id": "build 6",
-            "container": {
-              "id": "container 6",
-              "state": "stopped"
-            }
-          },
-          {
-            "id": "build 5",
-            "container": {
-              "id": "container 5",
-              "state": "stopped"
-            }
+        },
+        {
+          "id": "build 0",
+          "container": {
+            "id": "container 0",
+            "state": "stopped"
           }
-        ],
-        "state": "closed"
-      }
-    ],
-    "branches": [
-      {
-        "branch": "branch 1",
-        "builds": [
-          {
-            "id": "build 4",
-            "container": {
-              "id": "container 4",
-              "state": "stopped"
-            }
-          },
-          {
-            "id": "build 3",
-            "container": {
-              "id": "container 3",
-              "state": "stopped"
-            }
-          },
-          {
-            "id": "build pre-3",
-            "container": {
-              "id": "container pre-3",
-              "state": "stopped"
-            }
+        }
+      ]
+    },
+    {
+      "pr": "1",
+      "builds": [
+        {
+          "id": "build 4",
+          "container": {
+            "id": "container 4",
+            "state": "stopped"
           }
-        ]
-      }
-    ]
-  }
-]
+        },
+        {
+          "id": "build 3",
+          "container": {
+            "id": "container 3",
+            "state": "stopped"
+          }
+        }
+      ],
+      "state": "open"
+    },
+    {
+      "pr": "2",
+      "builds": [
+        {
+          "id": "build 6",
+          "container": {
+            "id": "container 6",
+            "state": "stopped"
+          }
+        },
+        {
+          "id": "build 5",
+          "container": {
+            "id": "container 5",
+            "state": "stopped"
+          }
+        }
+      ],
+      "state": "closed"
+    }
+  ],
+  "branches": [
+    {
+      "branch": "branch 1",
+      "builds": [
+        {
+          "id": "build 4",
+          "container": {
+            "id": "container 4",
+            "state": "stopped"
+          }
+        },
+        {
+          "id": "build 3",
+          "container": {
+            "id": "container 3",
+            "state": "stopped"
+          }
+        },
+        {
+          "id": "build pre-3",
+          "container": {
+            "id": "container pre-3",
+            "state": "stopped"
+          }
+        }
+      ]
+    }
+  ]
+}
