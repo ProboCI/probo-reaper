@@ -5,7 +5,7 @@ cmPort: 3020
 apiServerHost: localhost
 apiServerPort: 3038
 
-dry-run: true
+dryRun: true
 
 # output format used for --status command:
 #  json: JSON output - one line per JSON object
