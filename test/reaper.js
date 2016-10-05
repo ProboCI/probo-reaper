@@ -60,8 +60,8 @@ describe('Reaper', function() {
           actions.should.have.property('keep');
           actions.should.have.property('remove');
           actions.keep.should.be.instanceof(Array).and.have.lengthOf(1);
-          let buildId = actions.keep[0];
-          buildId.should.equal('cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc');
+          let build = actions.keep[0];
+          build.container.id.should.equal('cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc');
           done();
         });
     });
