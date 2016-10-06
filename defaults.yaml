@@ -30,3 +30,5 @@ eventStreams:
 codeHostingHandlers:
   github: 'http://localhost:3010'
   bitbucket: 'http://localhost:3012'
+
+perBranchBuildLimit: 1
