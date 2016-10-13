@@ -101,6 +101,7 @@ function server() {
       containerManagerUrl: `http://${config.cmHostname}:${config.cmPort}`,
       apiServerHost: config.apiServerHost,
       apiServerPort: config.apiServerPort,
+      perBranchBuildLimit: config.perBranchBuildLimit,
     };
     var reaperServer = new Server(options);
     reaperServer.start();

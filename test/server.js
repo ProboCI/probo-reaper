@@ -220,6 +220,65 @@ describe('Server', function() {
         }, 200);
       }));
     });
+    it('should not reap pinned builds based on branch limits', function(done) {
+      let projectOne = {
+        id: 'project 1',
+        organization: {
+          id: 'organization 2',
+          subscription: {
+            rules: {
+              perBranchBuildLimit: 1,
+              diskSpace: -1,
+            },
+          },
+        },
+      };
+      let projectTwo = {
+        id: 'project 1',
+        organization: {
+          id: 'organization 2',
+          subscription: {
+            rules: {
+              perBranchBuildLimit: 2,
+              diskSpace: -1,
+            },
+          },
+        },
+      };
+
+      let builds = _.map([
+        {id: 'build 01', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne, pinned: true},
+        {id: 'build 02', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne, pinned: false},
+        {id: 'build 03', createdAt: '2016-02-03T05:44:46.947Z', branch: {name: 'branch 2'}, project: projectOne},
+        {id: 'build 04', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 2'}, project: projectOne, pinned: true},
+        {id: 'build 05', createdAt: '2016-02-05T05:44:46.947Z', branch: {name: 'branch 3'}, project: projectTwo, pinned: true},
+        {id: 'build 06', createdAt: '2016-02-06T05:44:46.947Z', branch: {name: 'branch 3'}, project: projectTwo},
+        {id: 'build 07', createdAt: '2016-02-07T05:44:46.947Z', branch: {name: 'branch 3'}, project: projectTwo},
+        {id: 'build 08', createdAt: '2016-02-08T05:44:46.947Z', branch: {name: 'branch 3'}, project: projectTwo},
+        {id: 'build 09', createdAt: '2016-03-09T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne},
+        {id: 'build 10', createdAt: '2016-02-10T05:44:46.947Z', branch: {name: 'branch 2'}, project: projectOne},
+      ], getTestBuildEvent);
+
+      builds.forEach(function(build) {
+        stream.write(build);
+      });
+
+      server.on('enforcementComplete', getEventCounter(10, function(triggeringBuild) {
+        async.map([builds[8].build, builds[9].build, builds[7].build], server.getProjectBranchBuilds.bind(server), function(error, results) {
+          results[0][0].value.id.should.equal('build 01');
+          results[0][1].value.id.should.equal('build 09');
+          results[0].length.should.equal(2);
+          results[1][0].value.id.should.equal('build 04');
+          results[1][1].value.id.should.equal('build 10');
+          results[1].length.should.equal(2);
+          results[2][0].value.id.should.equal('build 05');
+          results[2][1].value.id.should.equal('build 07');
+          results[2][2].value.id.should.equal('build 08');
+          results[2].length.should.equal(3);
+          done();
+        });
+      }));
+    });
     it('should reap all builds older than a conifgurable time window');
     // TODO: When should we check? Ideally we subscribe to provider (github/bitbucket) events but we could miss one so
     // we may need/want to perform some kind of "true-up".

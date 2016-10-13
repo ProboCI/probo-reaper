@@ -9,11 +9,11 @@ var _ = require('lodash');
 
 var lib = require('../lib/criteria');
 
-describe('criteria', function(done) {
-  var projects;
+describe('criteria functionality', function(done) {
+  var testProject;
 
   before('load projects', function() {
-    projects = require('./fixtures/criteria_projects');
+    testProject = require('./fixtures/criteria_projects.json');
   });
 
   it('merges results objects properly', function() {
@@ -82,9 +82,7 @@ describe('criteria', function(done) {
       .should.eql([]);
   });
 
-  it('criteria gets applied correctly', function() {
-    let project = projects[0];
-
+  it('applies criteria correctly', function() {
     let criteria = {
       pullRequest: {
         open: {
@@ -104,7 +102,7 @@ describe('criteria', function(done) {
     // Missing criteria
     applyCriteria.bind(null, {}).should.throw('project and criteria are required.');
 
-    let actions = applyCriteria(project, criteria);
+    let actions = applyCriteria(testProject, criteria);
     actions.remove.map(function(obj) {
       return obj.container.id;
     })
