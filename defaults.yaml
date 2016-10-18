@@ -32,3 +32,11 @@ codeHostingHandlers:
   bitbucket: 'http://localhost:3012'
 
 perBranchBuildLimit: 1
+
+reaperCriteria:
+  pullRequest:
+    open:
+      max: 1,
+      maxAge: ''
+    closed:
+      max: 0

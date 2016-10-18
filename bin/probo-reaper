@@ -72,6 +72,7 @@ function reap() {
       console.error(error);
       throw error;
     }
+
     reaper.run(config);
   });
 }
