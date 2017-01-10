@@ -136,6 +136,8 @@ describe('Server', function() {
       stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
       server.on('buildReceived', getEventCounter(2, function() {
         server.getKeyAndValueArray('!', '~', function(error, records) {
+          let reapReceived = false;
+          server.on('reapReceived', () => { reapReceived = true;});
           should.exist(server);
           records.length.should.equal(8);
           records[0].key.should.equal('build!!build 1');
@@ -143,6 +145,7 @@ describe('Server', function() {
           stream.write(getTestBuildEvent(false, {event: 'reaped'}));
           server.getKeyAndValueArray('!', '~', function(error, records) {
             should.exist(server);
+            reapReceived.should.equal(true);
             records.length.should.equal(4);
             records[0].key.should.equal('build!!build 2');
             done();
