@@ -54,11 +54,9 @@ function reap() {
     .option('dry-run', {
       describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
       type: 'boolean',
-      default: true,
     })
     .option('output-format', {
       describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
-      default: 'text',
       alias: ['output', 'o'],
     });
 
