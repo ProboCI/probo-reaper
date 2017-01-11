@@ -73,8 +73,6 @@ function getEventCounter(count, done) {
 
 
 describe('Server', function() {
-  const apiServerHost = 'localhost';
-  const apiServerPort = 3038;
   const containerManagerUrl = 'http://localhost:9631';
 
   describe('event storage', function() {
@@ -86,9 +84,9 @@ describe('Server', function() {
         level: storage,
         consumer: new eventbus.plugins.Memory.Consumer({stream}),
         log: bunyan.createLogger({name: 'reaper-tests'}),
-        apiServerHost: apiServerHost,
-        apiServerPort: apiServerPort,
-        containerManagerUrl: containerManagerUrl,
+        apiServerHost: 'localhost',
+        apiServerPort: 0,
+        containerManagerUrl,
       };
       options.log._level = Number.POSITIVE_INFINITY;
       server = new Server(options);
@@ -100,7 +98,8 @@ describe('Server', function() {
     it('should export data', function(done) {
       stream.write(getTestBuildEvent());
       server.on('buildReceived', function() {
-        request(`http://${apiServerHost}:${apiServerPort}/api/export-data`, function(error, response, body) {
+        const address = server.server.address();
+        request(`http://${address.address}:${address.port}/api/export-data`, function(error, response, body) {
           should.not.exist(error);
           response.statusCode.should.equal(200);
           body = body.split('\n');
