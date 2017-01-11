@@ -25,9 +25,17 @@ var stream = null;
 var server = null;
 var storage = null;
 
-function getTestBuildEvent(object) {
-  object = object || {};
-  var baseline = {
+/**
+ * Fetches a sample build event allowing you to customize specified attributes.
+ *
+ * @param {object} build - An object used to override baseline build object.
+ * @param {object} buildMetadata - This is the event envelope which will contain build as its member.
+ * @return {object} - An object of the structure `{event: 'ready', build}`.
+ */
+function getTestBuildEvent(build, buildMetadata) {
+  build = build || {};
+  buildMetadata = buildMetadata || {};
+  const baseline = {
     id: 'build 1',
     createdAt: '2016-02-27T05:44:46.947Z',
     project: {
@@ -50,7 +58,7 @@ function getTestBuildEvent(object) {
       id: 'some container',
     },
   };
-  return {build: _.merge(baseline, object), event: 'ready'};
+  return _.merge({build: _.merge(baseline, build), event: 'ready'}, buildMetadata);
 }
 
 function getEventCounter(count, done) {
@@ -120,6 +128,28 @@ describe('Server', function() {
           records[6].key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
           records[7].key.should.equal('project_branch_build!!project 2!!branch 1!!2016-02-27T05:44:46.947Z!!build 2');
           done();
+        });
+      }));
+    });
+    it('should clean up builds stored when reap events occur', function(done) {
+      stream.write(getTestBuildEvent());
+      stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
+      server.on('buildReceived', getEventCounter(2, function() {
+        server.getKeyAndValueArray('!', '~', function(error, records) {
+          let reapReceived = false;
+          server.on('reapReceived', () => { reapReceived = true;});
+          should.exist(server);
+          records.length.should.equal(8);
+          records[0].key.should.equal('build!!build 1');
+          records[1].key.should.equal('build!!build 2');
+          stream.write(getTestBuildEvent(false, {event: 'reaped'}));
+          server.getKeyAndValueArray('!', '~', function(error, records) {
+            should.exist(server);
+            reapReceived.should.equal(true);
+            records.length.should.equal(4);
+            records[0].key.should.equal('build!!build 2');
+            done();
+          });
         });
       }));
     });
@@ -221,7 +251,7 @@ describe('Server', function() {
       }));
     });
     it('should not reap pinned builds based on branch limits', function(done) {
-      let projectOne = {
+      const projectOne = {
         id: 'project 1',
         organization: {
           id: 'organization 2',
@@ -233,7 +263,7 @@ describe('Server', function() {
           },
         },
       };
-      let projectTwo = {
+      const projectTwo = {
         id: 'project 1',
         organization: {
           id: 'organization 2',
@@ -246,7 +276,7 @@ describe('Server', function() {
         },
       };
 
-      let builds = _.map([
+      const buildData = [
         {id: 'build 01', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne, pinned: true},
         {id: 'build 02', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne, pinned: false},
         {id: 'build 03', createdAt: '2016-02-03T05:44:46.947Z', branch: {name: 'branch 2'}, project: projectOne},
@@ -257,7 +287,8 @@ describe('Server', function() {
         {id: 'build 08', createdAt: '2016-02-08T05:44:46.947Z', branch: {name: 'branch 3'}, project: projectTwo},
         {id: 'build 09', createdAt: '2016-03-09T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne},
         {id: 'build 10', createdAt: '2016-02-10T05:44:46.947Z', branch: {name: 'branch 2'}, project: projectOne},
-      ], getTestBuildEvent);
+      ];
+      const builds = _.map(buildData, getTestBuildEvent);
 
       builds.forEach(function(build) {
         stream.write(build);
