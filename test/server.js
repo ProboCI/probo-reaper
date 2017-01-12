@@ -25,6 +25,7 @@ var producer = null;
 var stream = null;
 var server = null;
 var storage = null;
+var logStorage = [];
 
 /**
  * Fetches a sample build event allowing you to customize specified attributes.
@@ -82,15 +83,19 @@ describe('Server', function() {
       stream = through2.obj();
       storage = levelup('./test', {db: memdown});
       producer = new eventbus.plugins.Memory.Producer({stream});
+      logStorage = [];
+      let logStream = through2(function(data, enc, cb) {
+        logStorage.push(JSON.parse(data.toString()));
+        cb(null, data);
+      });
       var options = {
         level: storage,
         consumer: new eventbus.plugins.Memory.Consumer({stream}),
-        log: bunyan.createLogger({name: 'reaper-tests'}),
+        log: bunyan.createLogger({name: 'reaper-tests', streams: [{stream: logStream, level: 'debug'}]}),
         apiServerHost: 'localhost',
         apiServerPort: 0,
         containerManagerUrl,
       };
-      options.log._level = Number.POSITIVE_INFINITY;
       server = new Server(options);
       server.start(done);
     });
@@ -311,6 +316,69 @@ describe('Server', function() {
         });
       }));
     });
+    it('should not reap builds matching an exempted pattern', function(done) {
+      var project = {
+        id: 'project 2',
+        organization: {
+          id: 'organization 2',
+          subscription: {
+            rules: {
+              diskSpace: 2,
+              perBranchBuildLimit: -1,
+            },
+          },
+        },
+      };
+      server.limitRuleExclutions = [
+        {
+          name: 'kids eat free',
+          pattern: {
+            project: {
+              organization: {
+                id: 'organization 2',
+              },
+            },
+          },
+        },
+      ];
+      producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      server.on('enforcementComplete', getEventCounter(12, function(triggeringBuild) {
+        setTimeout(function() {
+          var tasks = {
+            allBuilds: server.getKeyAndValueArray.bind(server, 'build!!!', 'build!!~'),
+            organization1: server.getOrganizationBuilds.bind(server, 'organization 1'),
+            organization2: server.getOrganizationBuilds.bind(server, 'organization 2'),
+          };
+          async.parallel(tasks, function(error, results) {
+            should.not.exist(error);
+            results.organization2.length.should.equal(9);
+            results.allBuilds.length.should.equal(11);
+            results.organization1.length.should.equal(2);
+            // Verify that this organization is down to 2 gigabytes.
+            server.bytesToGigabytes(server.aggregateSize(results.organization2)).should.equal(4.5);
+            // Verify that this organization is down to 1 gigabytes.
+            server.bytesToGigabytes(server.aggregateSize(results.organization1)).should.equal(1);
+            let build12Message = logStorage.pop();
+            build12Message.buildId.should.equal('build 12');
+            build12Message.msg.should.containEql('build 12');
+            build12Message.msg.should.containEql('kids eat free');
+            done();
+          });
+        }, 200);
+      }));
+    });
+    it('should reap builds whose pull requests have been closed');
     it('should reap all builds older than a conifgurable time window');
     // TODO: When should we check? Ideally we subscribe to provider (github/bitbucket) events but we could miss one so
     // we may need/want to perform some kind of "true-up".
