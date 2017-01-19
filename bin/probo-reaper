@@ -101,6 +101,7 @@ function server() {
       apiServerHost: config.apiServerHost,
       apiServerPort: config.apiServerPort,
       perBranchBuildLimit: config.perBranchBuildLimit,
+      limitRuleExclutions: config.limitRuleExclutions,
     };
     var reaperServer = new Server(options);
     reaperServer.start();

@@ -40,3 +40,11 @@ reaperCriteria:
       maxAge: ''
     closed:
       max: 0
+
+limitRuleExclutions: []
+# Allow any build where build.project.id == 1234 to escape normal restrictions.
+# limitRuleExclutions:
+#   - name: 'Probo likes you'
+#     pattern:
+#       project:
+#         id: 1234
