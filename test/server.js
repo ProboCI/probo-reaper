@@ -21,6 +21,7 @@ nock('http://localhost:9631')
 
 // We use a simple method to reset the world between tests by
 // using global variables.
+var producer = null;
 var stream = null;
 var server = null;
 var storage = null;
@@ -80,6 +81,7 @@ describe('Server', function() {
       memdown.clearGlobalStore();
       stream = through2.obj();
       storage = levelup('./test', {db: memdown});
+      producer = new eventbus.plugins.Memory.Producer({stream});
       var options = {
         level: storage,
         consumer: new eventbus.plugins.Memory.Consumer({stream}),
@@ -96,7 +98,7 @@ describe('Server', function() {
       server.stop(done);
     });
     it('should export data', function(done) {
-      stream.write(getTestBuildEvent());
+      producer.stream.write(getTestBuildEvent());
       server.on('buildReceived', function() {
         const address = server.server.address();
         request(`http://${address.address}:${address.port}/api/export-data`, function(error, response, body) {
@@ -112,8 +114,8 @@ describe('Server', function() {
       });
     });
     it('should store builds indexed by build id, date, organization, and branch', function(done) {
-      stream.write(getTestBuildEvent());
-      stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
+      producer.stream.write(getTestBuildEvent());
+      producer.stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
       server.on('buildReceived', getEventCounter(2, function() {
         server.getKeyAndValueArray('!', '~', function(error, records) {
           should.exist(server);
@@ -131,8 +133,8 @@ describe('Server', function() {
       }));
     });
     it('should clean up builds stored when reap events occur', function(done) {
-      stream.write(getTestBuildEvent());
-      stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
+      producer.stream.write(getTestBuildEvent());
+      producer.stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
       server.on('buildReceived', getEventCounter(2, function() {
         server.getKeyAndValueArray('!', '~', function(error, records) {
           let reapReceived = false;
@@ -141,7 +143,7 @@ describe('Server', function() {
           records.length.should.equal(8);
           records[0].key.should.equal('build!!build 1');
           records[1].key.should.equal('build!!build 2');
-          stream.write(getTestBuildEvent(false, {event: 'reaped'}));
+          producer.stream.write(getTestBuildEvent(false, {event: 'reaped'}));
           server.getKeyAndValueArray('!', '~', function(error, records) {
             should.exist(server);
             reapReceived.should.equal(true);
@@ -153,8 +155,8 @@ describe('Server', function() {
       }));
     });
     it('should query for individual records', function(done) {
-      stream.write(getTestBuildEvent());
-      stream.write(getTestBuildEvent({id: 'build 3'}));
+      producer.stream.write(getTestBuildEvent());
+      producer.stream.write(getTestBuildEvent({id: 'build 3'}));
       server.on('buildReceived', getEventCounter(2, function() {
         server.getValuesArray('build!!!', 'build!!~', function(error, results) {
           results.length.should.equal(2);
@@ -164,10 +166,10 @@ describe('Server', function() {
       }));
     });
     it('should reap all but the most recent X builds on a branch based on configuration', function(done) {
-      stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
-      stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 1'}}));
-      stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', branch: {name: 'branch 2'}}));
-      stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 2'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', branch: {name: 'branch 2'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 2'}}));
       var project = {
         id: 'project 1',
         organization: {
@@ -180,15 +182,15 @@ describe('Server', function() {
           },
         },
       };
-      stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-05T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
-      stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-06T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
-      stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-07T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
+      producer.stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-05T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
+      producer.stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-06T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
+      producer.stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-07T05:44:46.947Z', branch: {name: 'branch 3'}, project}));
       var lastBranch3Build = getTestBuildEvent({id: 'build 8', createdAt: '2016-02-08T05:44:46.947Z', branch: {name: 'branch 3'}, project});
-      stream.write(lastBranch3Build);
+      producer.stream.write(lastBranch3Build);
       var lastBranch1Build = getTestBuildEvent({id: 'build 9', createdAt: '2016-03-09T05:44:46.947Z', branch: {name: 'branch 1'}});
-      stream.write(lastBranch1Build);
+      producer.stream.write(lastBranch1Build);
       var lastBranch2Build = getTestBuildEvent({id: 'build 10', createdAt: '2016-02-10T05:44:46.947Z', branch: {name: 'branch 2'}});
-      stream.write(lastBranch2Build);
+      producer.stream.write(lastBranch2Build);
       server.on('enforcementComplete', getEventCounter(10, function(triggeringBuild) {
         async.map([lastBranch1Build.build, lastBranch2Build.build, lastBranch3Build.build], server.getProjectBranchBuilds.bind(server), function(error, results) {
           results[0][0].value.id.should.equal('build 9');
@@ -216,18 +218,18 @@ describe('Server', function() {
           },
         },
       };
-      stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
-      stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
-      stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
-      stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}}));
-      stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
-      stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
-      stream.write(getTestBuildEvent({id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
-      stream.write(getTestBuildEvent({id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      stream.write(getTestBuildEvent({id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
-      stream.write(getTestBuildEvent({id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      stream.write(getTestBuildEvent({id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
+      producer.stream.write(getTestBuildEvent({id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
       server.on('enforcementComplete', getEventCounter(12, function(triggeringBuild) {
         setTimeout(function() {
           var tasks = {
@@ -290,7 +292,7 @@ describe('Server', function() {
       const builds = _.map(buildData, getTestBuildEvent);
 
       builds.forEach(function(build) {
-        stream.write(build);
+        producer.stream.write(build);
       });
 
       server.on('enforcementComplete', getEventCounter(10, function(triggeringBuild) {
