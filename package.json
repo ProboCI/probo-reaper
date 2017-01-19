@@ -38,7 +38,7 @@
     "leveldown": "^1.4.4",
     "levelup": "^1.3.1",
     "lodash": "^4.17.4",
-    "probo-eventbus": "^1.0.2",
+    "probo-eventbus": "^1.0.3",
     "querystring": "^0.2.0",
     "request": "^2.72.0",
     "request-promise": "^1.0.2",
@@ -51,7 +51,7 @@
     "eslint": "^1.10.1",
     "eslint-config-probo": "^1.0.2",
     "istanbul": "^0.4.2",
-    "memdown": "^1.2.0",
+    "memdown": "^1.2.4",
     "mocha": "^2.3.4",
     "nock": "^8.0.0",
     "should": "^7.1.1"
