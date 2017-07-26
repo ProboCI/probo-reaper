@@ -1,18 +1,20 @@
 'use strict';
 
-var async = require('async');
-var bunyan = require('bunyan');
-var levelup = require('levelup');
-var _ = require('lodash');
-var memdown = require('memdown');
-var nock = require('nock');
-var eventbus = require('probo-eventbus');
-var request = require('request');
-var should = require('should');
-var through2 = require('through2');
+const async = require('async');
+const bunyan = require('bunyan');
+const levelup = require('levelup');
+const _ = require('lodash');
+const memdown = require('memdown');
+const nock = require('nock');
+const eventbus = require('probo-eventbus');
+const request = require('request');
+const should = require('should');
+const through2 = require('through2');
+const lib = require('..');
+const Server = lib.Server;
 
-var lib = require('..');
-var Server = lib.Server;
+const organizationId1 = 'ef71e66b-b157-49ef-b6f4-90b618ac2c8c';
+const organizationId2 = '3d1c0855-3c8d-402f-8838-4ca2d7e7bbc7';
 
 nock('http://localhost:9631')
   .persist()
@@ -43,7 +45,7 @@ function getTestBuildEvent(build, buildMetadata) {
     project: {
       id: 'project 1',
       organization: {
-        id: 'organization 1',
+        id: organizationId1,
         subscription: {
           rules: {},
         },
@@ -63,6 +65,24 @@ function getTestBuildEvent(build, buildMetadata) {
   return _.merge({build: _.merge(baseline, build), event: 'ready'}, buildMetadata);
 }
 
+function setUpDbApiResponses(responses, organization) {
+  organization = organization || organizationId1;
+  responses.forEach(response => {
+    nock('http://localhost:9876')
+      .get(`/organization/${organization}/disk-usage`)
+      .reply(200, response + '');
+  });
+}
+
+function getByteCountRamp(num) {
+  let gb = 0.0;
+  let ramp = [];
+  for (let i = 0; i < num; i++) {
+    gb += 0.5;
+    ramp.push(server.gigabytesToBytes(gb));
+  }
+  return ramp;
+}
 function getEventCounter(count, done) {
   var counter = 0;
   return function() {
@@ -84,6 +104,7 @@ describe('Server', function() {
       storage = levelup('./test', {db: memdown});
       producer = new eventbus.plugins.Memory.Producer({stream});
       logStorage = [];
+
       let logStream = through2(function(data, enc, cb) {
         logStorage.push(JSON.parse(data.toString()));
         cb(null, data);
@@ -95,6 +116,7 @@ describe('Server', function() {
         apiServerHost: 'localhost',
         apiServerPort: 0,
         containerManagerUrl,
+        dbUrl: 'http://localhost:9876',
       };
       server = new Server(options);
       server.start(done);
@@ -103,6 +125,8 @@ describe('Server', function() {
       server.stop(done);
     });
     it('should export data', function(done) {
+      let ramp = getByteCountRamp(1);
+      setUpDbApiResponses(ramp);
       producer.stream.write(getTestBuildEvent());
       server.on('buildReceived', function() {
         const address = server.server.address();
@@ -112,13 +136,15 @@ describe('Server', function() {
           body = body.split('\n');
           JSON.parse(body[0]).key.should.equal('build!!build 1');
           JSON.parse(body[1]).key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 1');
-          JSON.parse(body[2]).key.should.equal('organization_build!!organization 1!!2016-02-27T05:44:46.947Z!!build 1');
+          JSON.parse(body[2]).key.should.equal(`organization_build!!${organizationId1}!!2016-02-27T05:44:46.947Z!!build 1`);
           JSON.parse(body[3]).key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
           done();
         });
       });
     });
     it('should store builds indexed by build id, date, organization, and branch', function(done) {
+      let ramp = getByteCountRamp(2);
+      setUpDbApiResponses(ramp);
       producer.stream.write(getTestBuildEvent());
       producer.stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
       server.on('buildReceived', getEventCounter(2, function() {
@@ -129,8 +155,8 @@ describe('Server', function() {
           records[1].key.should.equal('build!!build 2');
           records[2].key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 1');
           records[3].key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 2');
-          records[4].key.should.equal('organization_build!!organization 1!!2016-02-27T05:44:46.947Z!!build 1');
-          records[5].key.should.equal('organization_build!!organization 1!!2016-02-27T05:44:46.947Z!!build 2');
+          records[4].key.should.equal(`organization_build!!${organizationId1}!!2016-02-27T05:44:46.947Z!!build 1`);
+          records[5].key.should.equal(`organization_build!!${organizationId1}!!2016-02-27T05:44:46.947Z!!build 2`);
           records[6].key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
           records[7].key.should.equal('project_branch_build!!project 2!!branch 1!!2016-02-27T05:44:46.947Z!!build 2');
           done();
@@ -138,6 +164,8 @@ describe('Server', function() {
       }));
     });
     it('should clean up builds stored when reap events occur', function(done) {
+      let ramp = getByteCountRamp(2);
+      setUpDbApiResponses(ramp);
       producer.stream.write(getTestBuildEvent());
       producer.stream.write(getTestBuildEvent({id: 'build 2', project: {id: 'project 2'}}));
       server.on('buildReceived', getEventCounter(2, function() {
@@ -160,6 +188,8 @@ describe('Server', function() {
       }));
     });
     it('should query for individual records', function(done) {
+      let ramp = getByteCountRamp(2);
+      setUpDbApiResponses(ramp);
       producer.stream.write(getTestBuildEvent());
       producer.stream.write(getTestBuildEvent({id: 'build 3'}));
       server.on('buildReceived', getEventCounter(2, function() {
@@ -171,6 +201,15 @@ describe('Server', function() {
       }));
     });
     it('should reap all but the most recent X builds on a branch based on configuration', function(done) {
+      let ramp = [
+        server.gigabytesToBytes(0.5),
+        server.gigabytesToBytes(0.5),
+        server.gigabytesToBytes(1),
+        server.gigabytesToBytes(1),
+        server.gigabytesToBytes(1),
+        server.gigabytesToBytes(1),
+      ];
+      setUpDbApiResponses(ramp);
       producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
       producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 1'}}));
       producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', branch: {name: 'branch 2'}}));
@@ -178,7 +217,7 @@ describe('Server', function() {
       var project = {
         id: 'project 1',
         organization: {
-          id: 'organization 2',
+          id: organizationId2,
           subscription: {
             rules: {
               perBranchBuildLimit: 3,
@@ -211,10 +250,10 @@ describe('Server', function() {
       }));
     });
     it('should reap however many builds are necessary to get under the configured size limit for a given organization', function(done) {
-      var project = {
+      const project = {
         id: 'project 2',
         organization: {
-          id: 'organization 2',
+          id: organizationId2,
           subscription: {
             rules: {
               diskSpace: 2,
@@ -223,6 +262,23 @@ describe('Server', function() {
           },
         },
       };
+
+      let ramp = getByteCountRamp(3);
+      setUpDbApiResponses(ramp);
+
+      ramp = [
+        server.gigabytesToBytes(0.5),
+        server.gigabytesToBytes(1),
+        server.gigabytesToBytes(1.5),
+        server.gigabytesToBytes(2),
+        server.gigabytesToBytes(2.5),
+        server.gigabytesToBytes(2.5),
+        server.gigabytesToBytes(2.5),
+        server.gigabytesToBytes(2.5),
+        server.gigabytesToBytes(2.5),
+      ];
+      setUpDbApiResponses(ramp, organizationId2);
+
       producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
       producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
       producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
@@ -239,17 +295,13 @@ describe('Server', function() {
         setTimeout(function() {
           var tasks = {
             allBuilds: server.getKeyAndValueArray.bind(server, 'build!!!', 'build!!~'),
-            organization1: server.getOrganizationBuilds.bind(server, 'organization 1'),
-            organization2: server.getOrganizationBuilds.bind(server, 'organization 2'),
+            organization1: server.getOrganizationBuilds.bind(server, organizationId1),
+            organization2: server.getOrganizationBuilds.bind(server, organizationId2),
           };
           async.parallel(tasks, function(error, results) {
             should.not.exist(error);
             results.allBuilds.length.should.equal(6);
             results.organization1.length.should.equal(2);
-            // Verify that this organization is down to 2 gigabytes.
-            server.bytesToGigabytes(server.aggregateSize(results.organization2)).should.equal(2);
-            // Verify that this organization is down to 1 gigabytes.
-            server.bytesToGigabytes(server.aggregateSize(results.organization1)).should.equal(1);
             results.organization2.length.should.equal(4);
             done();
           });
@@ -260,7 +312,7 @@ describe('Server', function() {
       const projectOne = {
         id: 'project 1',
         organization: {
-          id: 'organization 2',
+          id: organizationId2,
           subscription: {
             rules: {
               perBranchBuildLimit: 1,
@@ -272,7 +324,7 @@ describe('Server', function() {
       const projectTwo = {
         id: 'project 1',
         organization: {
-          id: 'organization 2',
+          id: organizationId2,
           subscription: {
             rules: {
               perBranchBuildLimit: 2,
@@ -320,7 +372,7 @@ describe('Server', function() {
       var project = {
         id: 'project 2',
         organization: {
-          id: 'organization 2',
+          id: organizationId2,
           subscription: {
             rules: {
               diskSpace: 2,
@@ -335,12 +387,16 @@ describe('Server', function() {
           pattern: {
             project: {
               organization: {
-                id: 'organization 2',
+                id: organizationId2,
               },
             },
           },
         },
       ];
+
+      let ramp = getByteCountRamp(3);
+      setUpDbApiResponses(ramp);
+
       producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
       producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
       producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
@@ -357,18 +413,14 @@ describe('Server', function() {
         setTimeout(function() {
           var tasks = {
             allBuilds: server.getKeyAndValueArray.bind(server, 'build!!!', 'build!!~'),
-            organization1: server.getOrganizationBuilds.bind(server, 'organization 1'),
-            organization2: server.getOrganizationBuilds.bind(server, 'organization 2'),
+            organization1: server.getOrganizationBuilds.bind(server, organizationId1),
+            organization2: server.getOrganizationBuilds.bind(server, organizationId2),
           };
           async.parallel(tasks, function(error, results) {
             should.not.exist(error);
             results.organization2.length.should.equal(9);
             results.allBuilds.length.should.equal(11);
             results.organization1.length.should.equal(2);
-            // Verify that this organization is down to 2 gigabytes.
-            server.bytesToGigabytes(server.aggregateSize(results.organization2)).should.equal(4.5);
-            // Verify that this organization is down to 1 gigabytes.
-            server.bytesToGigabytes(server.aggregateSize(results.organization1)).should.equal(1);
             let build12Message = logStorage.pop();
             build12Message.buildId.should.equal('build 12');
             build12Message.msg.should.containEql('build 12');
