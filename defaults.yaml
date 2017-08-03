@@ -48,3 +48,5 @@ limitRuleExclutions: []
 #     pattern:
 #       project:
 #         id: 1234
+
+dbUrl: 'http://localhost:8442'
