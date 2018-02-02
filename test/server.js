@@ -70,7 +70,7 @@ function setUpDbApiResponses(responses, organization) {
   responses.forEach(response => {
     nock('http://localhost:9876')
       .get(`/organization/${organization}/disk-usage`)
-      .reply(200, response + '');
+      .reply(200, '"' + response + '"');
   });
 }
 
