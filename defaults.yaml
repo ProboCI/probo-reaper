@@ -29,7 +29,9 @@ eventStreams:
 
 codeHostingHandlers:
   github: 'http://localhost:3010'
+  stash: 'http://localhost:3011'
   bitbucket: 'http://localhost:3012'
+  gitlab: 'http://localhost:3013'
 
 perBranchBuildLimit: 1
 
