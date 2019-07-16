@@ -1,18 +1,17 @@
 #! /usr/bin/env node
 'use strict';
 
-var path = require('path');
-var util = require('util');
+const bunyan = require('bunyan');
+const eventbus = require('probo-eventbus');
+const path = require('path');
+const util = require('util');
+const Loader = require('yaml-config-loader');
+const yargs = require('yargs');
 
-var eventbus = require('probo-eventbus');
-var Loader = require('yaml-config-loader');
-var yargs = require('yargs');
-var loader = new Loader();
-var bunyan = require('bunyan');
+const loader = new Loader();
 
-var lib = require('..');
-var reaper = lib.reaper;
-var Server = lib.Server;
+var reaper = require('../lib/reaper');
+var Server = require('../lib/Server');
 
 loader.on('error', function(error) {
   if (error.name === 'YAMLException') {
@@ -93,10 +92,13 @@ function server() {
       console.error(error);
       throw error;
     }
+
+    let eventStreamConfig = config.eventStreams.build_events.config;
+    eventStreamConfig.plugin = config.eventStreams.build_events.plugin;
+
     var options = {
-      consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
+      eventStreamConfig: eventStreamConfig,
       dataDirectory: config.dataDirectory,
-      logger: bunyan.createLogger({name: 'reaper'}),
       containerManagerUrl: `http://${config.cmHostname}:${config.cmPort}`,
       apiServerHost: config.apiServerHost,
       apiServerPort: config.apiServerPort,
