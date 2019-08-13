@@ -37,7 +37,7 @@
     "leveldown": "^5.1.1",
     "levelup": "^4.1.0",
     "lodash": "^4.17.15",
-    "probo-eventbus": "../probo-eventbus",
+    "probo-eventbus": "proboci/probo-eventbus#kafka-node",
     "querystring": "^0.2.0",
     "request": "^2.72.0",
     "request-promise": "^4.2.4",
