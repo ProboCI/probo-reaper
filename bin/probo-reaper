@@ -1,8 +1,6 @@
 #! /usr/bin/env node
 'use strict';
 
-const bunyan = require('bunyan');
-const eventbus = require('probo-eventbus');
 const path = require('path');
 const util = require('util');
 const Loader = require('yaml-config-loader');
@@ -10,7 +8,7 @@ const yargs = require('yargs');
 
 const loader = new Loader();
 
-var reaper = require('../lib/reaper');
+var ReaperCLI = require('../lib/ReaperCLI');
 var Server = require('../lib/Server');
 
 loader.on('error', function(error) {
@@ -46,17 +44,9 @@ function reap() {
       describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
       alias: 'c',
     })
-    .option('status', {
-      describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
-      alias: 's',
-    })
     .option('dry-run', {
       describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
       type: 'boolean',
-    })
-    .option('output-format', {
-      describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
-      alias: ['output', 'o'],
     });
 
   loader.addSchema({
@@ -70,7 +60,7 @@ function reap() {
       throw error;
     }
 
-    reaper.run(config);
+    new ReaperCLI(config).run(config);
   });
 }
 

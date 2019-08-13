@@ -1,24 +1,23 @@
 'use strict';
 
+const _ = require('lodash');
 const async = require('async');
 const bunyan = require('bunyan');
+const eventbus = require('probo-eventbus');
 const levelup = require('levelup');
-const _ = require('lodash');
 const memdown = require('memdown');
 const nock = require('nock');
-const eventbus = require('probo-eventbus');
-const request = require('request');
 const should = require('should');
 const through2 = require('through2');
-const lib = require('..');
-const Server = lib.Server;
+
+const Server = require('../lib/Server');
 
 const organizationId1 = 'ef71e66b-b157-49ef-b6f4-90b618ac2c8c';
 const organizationId2 = '3d1c0855-3c8d-402f-8838-4ca2d7e7bbc7';
 
 nock('http://localhost:9631')
   .persist()
-  .delete(/\/containers\/some\%20container\?force\=true\&reason\=.*/)
+  .delete(/\/builds\/.*\?force\=true\&reason\=.*/)
   .reply(200);
 
 // We use a simple method to reset the world between tests by
@@ -44,8 +43,8 @@ function getTestBuildEvent(build, buildMetadata) {
     createdAt: '2016-02-27T05:44:46.947Z',
     project: {
       id: 'project 1',
+      organizationId: organizationId1,
       organization: {
-        id: organizationId1,
         subscription: {
           rules: {},
         },
@@ -62,7 +61,27 @@ function getTestBuildEvent(build, buildMetadata) {
       id: 'some container',
     },
   };
+
   return _.merge({build: _.merge(baseline, build), event: 'ready'}, buildMetadata);
+}
+
+// Writing to the producer stream happens faster than the deletion of builds
+// from the reaper database. These functions ensures that there's a 50ms
+// difference between each build write.
+function writeBuilds(builds) {
+  let i = 0;
+
+  function loop() {
+    setTimeout(function () {
+      producer.stream.write(builds[i]);
+        i++;
+        if (i < builds.length) {
+          loop();
+        }
+    }, 50);
+  }
+
+  loop();
 }
 
 function setUpDbApiResponses(responses, organization) {
@@ -93,15 +112,12 @@ function getEventCounter(count, done) {
   };
 }
 
-
 describe('Server', function() {
   const containerManagerUrl = 'http://localhost:9631';
 
   describe('event storage', function() {
-    beforeEach(function(done) {
-      memdown.clearGlobalStore();
-      stream = through2.obj();
-      storage = levelup('./test', {db: memdown});
+    beforeEach(() => {
+      storage = levelup(memdown());
       producer = new eventbus.plugins.Memory.Producer({stream});
       logStorage = [];
 
@@ -109,38 +125,22 @@ describe('Server', function() {
         logStorage.push(JSON.parse(data.toString()));
         cb(null, data);
       });
+
       var options = {
         level: storage,
-        consumer: new eventbus.plugins.Memory.Consumer({stream}),
-        log: bunyan.createLogger({name: 'reaper-tests', streams: [{stream: logStream, level: 'debug'}]}),
+        consumer: new eventbus.plugins.Memory.Consumer({stream: producer.stream}),
+        logger: bunyan.createLogger({name: 'reaper-tests', streams: [{stream: logStream, level: 'debug'}]}),
         apiServerHost: 'localhost',
         apiServerPort: 0,
         containerManagerUrl,
         dbUrl: 'http://localhost:9876',
       };
       server = new Server(options);
-      server.start(done);
+
+      server.start();
     });
     afterEach(function(done) {
       server.stop(done);
-    });
-    it('should export data', function(done) {
-      let ramp = getByteCountRamp(1);
-      setUpDbApiResponses(ramp);
-      producer.stream.write(getTestBuildEvent());
-      server.on('buildReceived', function() {
-        const address = server.server.address();
-        request(`http://${address.address}:${address.port}/api/export-data`, function(error, response, body) {
-          should.not.exist(error);
-          response.statusCode.should.equal(200);
-          body = body.split('\n');
-          JSON.parse(body[0]).key.should.equal('build!!build 1');
-          JSON.parse(body[1]).key.should.equal('build_date!!2016-02-27T05:44:46.947Z!!build 1');
-          JSON.parse(body[2]).key.should.equal(`organization_build!!${organizationId1}!!2016-02-27T05:44:46.947Z!!build 1`);
-          JSON.parse(body[3]).key.should.equal('project_branch_build!!project 1!!branch 1!!2016-02-27T05:44:46.947Z!!build 1');
-          done();
-        });
-      });
     });
     it('should store builds indexed by build id, date, organization, and branch', function(done) {
       let ramp = getByteCountRamp(2);
@@ -174,14 +174,14 @@ describe('Server', function() {
           server.on('reapReceived', () => { reapReceived = true;});
           should.exist(server);
           records.length.should.equal(8);
-          records[0].key.should.equal('build!!build 1');
-          records[1].key.should.equal('build!!build 2');
+          records[0].key.toString().should.equal('build!!build 1');
+          records[1].key.toString().should.equal('build!!build 2');
           producer.stream.write(getTestBuildEvent(false, {event: 'reaped'}));
           server.getKeyAndValueArray('!', '~', function(error, records) {
             should.exist(server);
             reapReceived.should.equal(true);
             records.length.should.equal(4);
-            records[0].key.should.equal('build!!build 2');
+            records[0].key.toString().should.equal('build!!build 2');
             done();
           });
         });
@@ -216,8 +216,8 @@ describe('Server', function() {
       producer.stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 2'}}));
       var project = {
         id: 'project 1',
+        organizationId: organizationId2,
         organization: {
-          id: organizationId2,
           subscription: {
             rules: {
               perBranchBuildLimit: 3,
@@ -252,8 +252,8 @@ describe('Server', function() {
     it('should reap however many builds are necessary to get under the configured size limit for a given organization', function(done) {
       const project = {
         id: 'project 2',
+        organizationId: organizationId2,
         organization: {
-          id: organizationId2,
           subscription: {
             rules: {
               diskSpace: 2,
@@ -275,22 +275,28 @@ describe('Server', function() {
         server.gigabytesToBytes(2.5),
         server.gigabytesToBytes(2.5),
         server.gigabytesToBytes(2.5),
-        server.gigabytesToBytes(2.5),
       ];
       setUpDbApiResponses(ramp, organizationId2);
 
-      producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      const buildData = [
+        {id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}},
+        {id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}},
+        {id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}},
+        {id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}},
+        {id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}},
+        {id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}},
+        {id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}},
+        {id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}},
+        {id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}},
+        {id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}},
+        {id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}},
+        {id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}},
+      ];
+
+      const builds = _.map(buildData, getTestBuildEvent);
+
+      writeBuilds(builds);
+
       server.on('enforcementComplete', getEventCounter(12, function(triggeringBuild) {
         setTimeout(function() {
           var tasks = {
@@ -300,9 +306,9 @@ describe('Server', function() {
           };
           async.parallel(tasks, function(error, results) {
             should.not.exist(error);
-            results.allBuilds.length.should.equal(6);
+            results.allBuilds.length.should.equal(7);
             results.organization1.length.should.equal(2);
-            results.organization2.length.should.equal(4);
+            results.organization2.length.should.equal(5);
             done();
           });
         }, 200);
@@ -346,11 +352,10 @@ describe('Server', function() {
         {id: 'build 09', createdAt: '2016-03-09T05:44:46.947Z', branch: {name: 'branch 1'}, project: projectOne},
         {id: 'build 10', createdAt: '2016-02-10T05:44:46.947Z', branch: {name: 'branch 2'}, project: projectOne},
       ];
+
       const builds = _.map(buildData, getTestBuildEvent);
 
-      builds.forEach(function(build) {
-        producer.stream.write(build);
-      });
+      writeBuilds(builds);
 
       server.on('enforcementComplete', getEventCounter(10, function(triggeringBuild) {
         async.map([builds[8].build, builds[9].build, builds[7].build], server.getProjectBranchBuilds.bind(server), function(error, results) {
@@ -371,8 +376,8 @@ describe('Server', function() {
     it('should not reap builds matching an exempted pattern', function(done) {
       var project = {
         id: 'project 2',
+        organizationId: organizationId2,
         organization: {
-          id: organizationId2,
           subscription: {
             rules: {
               diskSpace: 2,
@@ -386,9 +391,7 @@ describe('Server', function() {
           name: 'kids eat free',
           pattern: {
             project: {
-              organization: {
-                id: organizationId2,
-              },
+              organizationId: organizationId2,
             },
           },
         },
@@ -397,18 +400,25 @@ describe('Server', function() {
       let ramp = getByteCountRamp(3);
       setUpDbApiResponses(ramp);
 
-      producer.stream.write(getTestBuildEvent({id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}}));
-      producer.stream.write(getTestBuildEvent({id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}}));
+      const buildData = [
+        {id: 'build 1', createdAt: '2016-02-01T05:44:46.947Z', branch: {name: 'branch 1'}},
+        {id: 'build 2', createdAt: '2016-02-02T05:44:46.947Z', branch: {name: 'branch 2'}},
+        {id: 'build 3', createdAt: '2016-02-03T05:44:46.947Z', project, branch: {name: 'branch 1'}},
+        {id: 'build 4', createdAt: '2016-02-04T05:44:46.947Z', branch: {name: 'branch 3'}},
+        {id: 'build 5', createdAt: '2016-02-04T05:44:46.947Z', project, branch: {name: 'branch 1'}},
+        {id: 'build 6', createdAt: '2016-02-05T05:44:46.947Z', project, branch: {name: 'branch 3'}},
+        {id: 'build 7', createdAt: '2016-02-06T05:44:46.947Z', project, branch: {name: 'branch 4'}},
+        {id: 'build 8', createdAt: '2016-02-07T05:44:46.947Z', project, branch: {name: 'branch 4'}},
+        {id: 'build 9', createdAt: '2016-02-08T05:44:46.947Z', project, branch: {name: 'branch 3'}},
+        {id: 'build 10', createdAt: '2016-02-09T05:44:46.947Z', project, branch: {name: 'branch 5'}},
+        {id: 'build 11', createdAt: '2016-02-10T05:44:46.947Z', project, branch: {name: 'branch 3'}},
+        {id: 'build 12', createdAt: '2016-02-11T05:44:46.947Z', project, branch: {name: 'branch 5'}},
+      ];
+
+      const builds = _.map(buildData, getTestBuildEvent);
+
+      writeBuilds(builds);
+
       server.on('enforcementComplete', getEventCounter(12, function(triggeringBuild) {
         setTimeout(function() {
           var tasks = {
