@@ -32,7 +32,7 @@ codeHostingHandlers:
   gitlab: 'http://localhost:3013'
   bitbucket: 'http://localhost:3012'
 
-perBranchBuildLimit: 5
+perBranchBuildLimit: 3
 
 reaperCriteria:
   pullRequest:
