@@ -9,7 +9,7 @@
   "scripts": {
     "test": "mocha --recursive --require should",
     "watch": "mocha -w --recursive --require should",
-    "coverage": "istanbul cover ./node_modules/.bin/_mocha",
+    "coverage": "nyc npm run test",
     "standards": "eslint .",
     "lint-fix": "eslint --fix ."
   },
@@ -27,11 +27,11 @@
   },
   "homepage": "https://github.com/ProboCI/probo-reaper#readme",
   "dependencies": {
-    "JSONStream": "^1.0.6",
-    "async": "^1.5.2",
-    "bluebird": "^3.0.5",
-    "bunyan": "^1.7.1",
-    "bytes": "^2.2.0",
+    "JSONStream": "^1.3.5",
+    "async": "^3.1.0",
+    "bluebird": "^3.5.5",
+    "bunyan": "^1.8.12",
+    "bytes": "^3.1.0",
     "co": "^4.6.0",
     "co-read": "^0.1.1",
     "leveldown": "^5.1.1",
@@ -49,10 +49,10 @@
     "coveralls": "^3.0.5",
     "eslint": "^6.1.0",
     "eslint-config-probo": "^2.0.0",
-    "istanbul": "^0.4.2",
     "memdown": "^4.1.0",
-    "mocha": "^2.3.4",
-    "nock": "^8.0.0",
-    "should": "^7.1.1"
+    "mocha": "^6.2.0",
+    "nock": "^10.0.6",
+    "nyc": "^14.1.1",
+    "should": "^13.2.3"
   }
 }

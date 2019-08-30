@@ -32,15 +32,17 @@ codeHostingHandlers:
   gitlab: 'http://localhost:3013'
   bitbucket: 'http://localhost:3012'
 
-perBranchBuildLimit: 1
+perBranchBuildLimit: 3
 
 reaperCriteria:
   pullRequest:
     open:
-      max: 1
+      max: 2
       maxAge: ''
     closed:
       max: 0
+  branch:
+    max: 2
 
 limitRuleExclutions: []
 # Allow any build where build.project.id == 1234 to escape normal restrictions.
