@@ -1,3 +1,7 @@
+## v4.2.0
+ - Jan 21 2020
+ - Integrate with gitlab self-hosted server
+
 ## v4.1.0
 
  - Integrate with gitlab handler
