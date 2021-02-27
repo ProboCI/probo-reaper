@@ -1,12 +1,12 @@
 'use strict';
 
-var nock = require('nock');
-var should = require('should');
+const nock = require('nock');
+const should = require('should');
 
-var ContainerManager = require('../lib/container_manager');
-var reaper = require('../lib/reaper');
-var buildResponse = require('./fixtures/builds.json');
-var criteria = require('../lib/criteria');
+const buildResponse = require('./fixtures/builds.json');
+const ContainerManager = require('../lib/ContainerManager');
+const criteria = require('../lib/criteria');
+const Transform = require('../lib/Transform');
 
 var config = {
   cmHostname: 'localhost',
@@ -16,6 +16,22 @@ var config = {
     bitbucket: 'http://localhost:20015',
   },
 };
+
+const DEFAULT_CRITERIA = {
+  pullRequest: {
+    open: {
+      // containers per open PR
+      max: 1,
+      maxAge: '',
+    },
+    closed: {
+      // no containers for closed PRs
+      max: 0,
+    },
+  },
+};
+
+const transform = new Transform(config);
 
 nock(`http://${config.cmHostname}:${config.cmPort}`)
   .persist()
@@ -42,18 +58,21 @@ describe('Reaper', function() {
       var error = null;
       should.not.exist(error);
       var cm = new ContainerManager({url: `http://${config.cmHostname}:${config.cmPort}`});
-      cm.getBuildsPromise()
+      cm.getBuilds()
         .then(function(data) {
           return data;
         })
         .then(function(builds) {
-          return reaper.buildsToProjects(builds, config);
+          return transform.buildsToProjects(builds);
         })
         .then(function(projects) {
           let reapActions = [];
-          projects.forEach(function(project) {
-            reapActions.push(criteria.apply(project, project.reaperCriteria));
-          });
+
+          for (let projectName in projects) {
+            let project = projects[projectName];
+            reapActions.push(criteria.apply(project, DEFAULT_CRITERIA));
+          }
+
           reapActions.should.be.instanceof(Array).and.have.lengthOf(1);
           let actions = reapActions[0];
 

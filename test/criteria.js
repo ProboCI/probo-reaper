@@ -92,9 +92,9 @@ describe('criteria functionality', function(done) {
           max: 0,
         },
       },
-      branch: {
+      /*branch: {
         max: 2,
-      },
+      },*/
     };
 
     let applyCriteria = lib.apply;
@@ -110,7 +110,7 @@ describe('criteria functionality', function(done) {
       'container 0',
       'container 6',
       'container 5',
-      'container pre-3',
+      //'container pre-3',
     ]);
 
     actions.keep.map(function(obj) {
