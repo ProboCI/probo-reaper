@@ -9,7 +9,7 @@
   "scripts": {
     "test": "mocha --recursive --require should",
     "watch": "mocha -w --recursive --require should",
-    "coverage": "istanbul cover ./node_modules/.bin/_mocha",
+    "coverage": "nyc ./node_modules/.bin/_mocha",
     "standards": "eslint .",
     "lint-fix": "eslint --fix ."
   },
@@ -30,14 +30,14 @@
     "JSONStream": "^1.0.6",
     "async": "^1.5.2",
     "bluebird": "^3.0.5",
-    "bunyan": "^1.7.1",
+    "bunyan": "^1.8.15",
     "bytes": "^2.2.0",
     "co": "^4.6.0",
     "co-read": "^0.1.1",
     "leveldown": "^5.1.1",
     "levelup": "^4.1.0",
-    "lodash": "^4.17.15",
-    "probo-eventbus": "proboci/probo-eventbus#kafka-node",
+    "lodash": "^4.17.21",
+    "probo-eventbus": "^1.0.5",
     "querystring": "^0.2.0",
     "request": "^2.72.0",
     "request-promise": "^4.2.4",
@@ -46,13 +46,13 @@
     "yargs": "^3.30.0"
   },
   "devDependencies": {
-    "coveralls": "^3.0.5",
-    "eslint": "^6.1.0",
+    "coveralls": "^3.1.0",
+    "eslint": "^7.20.0",
     "eslint-config-probo": "^2.0.0",
-    "istanbul": "^0.4.2",
+    "nyc": "^15.1.0",
     "memdown": "^4.1.0",
-    "mocha": "^2.3.4",
-    "nock": "^8.0.0",
+    "mocha": "^8.3.0",
+    "nock": "^13.0.8",
     "should": "^7.1.1"
   }
 }
