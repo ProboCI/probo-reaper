@@ -9,6 +9,7 @@
   "slug": "test/testrepo",
   "pullRequests": [
     {
+      "branch": "pr",
       "pr": "undefined",
       "builds": [
         {
@@ -32,9 +33,11 @@
             "state": "stopped"
           }
         }
-      ]
+      ],
+      "state": "open"
     },
     {
+      "branch": "pr-1",
       "pr": "1",
       "builds": [
         {
@@ -55,6 +58,7 @@
       "state": "open"
     },
     {
+      "branch": "pr-2",
       "pr": "2",
       "builds": [
         {

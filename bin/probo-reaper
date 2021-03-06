@@ -1,18 +1,15 @@
 #! /usr/bin/env node
 'use strict';
 
-var path = require('path');
-var util = require('util');
+const path = require('path');
+const util = require('util');
+const Loader = require('yaml-config-loader');
+const yargs = require('yargs');
 
-var eventbus = require('probo-eventbus');
-var Loader = require('yaml-config-loader');
-var yargs = require('yargs');
-var loader = new Loader();
-var bunyan = require('bunyan');
+const loader = new Loader();
 
-var lib = require('..');
-var reaper = lib.reaper;
-var Server = lib.Server;
+var ReaperCLI = require('../lib/ReaperCLI');
+var Server = require('../lib/Server');
 
 loader.on('error', function(error) {
   if (error.name === 'YAMLException') {
@@ -47,17 +44,9 @@ function reap() {
       describe: 'A YAML config file or directory of yaml files to load, can be invoked multiple times and later files will override earlier.',
       alias: 'c',
     })
-    .option('status', {
-      describe: 'Instead of reaping, dump a listing of builds and their container, PR, and branch information',
-      alias: 's',
-    })
     .option('dry-run', {
       describe: 'Only perform a dry run and list containers to be deleted, but don\'t delete them.',
       type: 'boolean',
-    })
-    .option('output-format', {
-      describe: 'Specify output format. Options are "json" and "text" (currently only affects build output).',
-      alias: ['output', 'o'],
     });
 
   loader.addSchema({
@@ -71,7 +60,7 @@ function reap() {
       throw error;
     }
 
-    reaper.run(config);
+    new ReaperCLI(config).run(config);
   });
 }
 
@@ -93,10 +82,13 @@ function server() {
       console.error(error);
       throw error;
     }
+
+    let eventStreamConfig = config.eventStreams.build_events.config;
+    eventStreamConfig.plugin = config.eventStreams.build_events.plugin;
+
     var options = {
-      consumer: new eventbus.plugins[config.eventStreams.build_events.plugin].Consumer(config.eventStreams.build_events.config),
+      eventStreamConfig: eventStreamConfig,
       dataDirectory: config.dataDirectory,
-      logger: bunyan.createLogger({name: 'reaper'}),
       containerManagerUrl: `http://${config.cmHostname}:${config.cmPort}`,
       apiServerHost: config.apiServerHost,
       apiServerPort: config.apiServerPort,
