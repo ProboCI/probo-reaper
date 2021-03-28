@@ -15,4 +15,4 @@ WORKDIR /home/probo/app
 
 EXPOSE 3038
 
-CMD ["bin/probo-reaper", "server"]
+CMD ["sh", "/home/probo/app/bin/startup.sh"]

@@ -23,7 +23,7 @@ function cliProcessing(argv, done) {
     yargs.showHelp();
   }
 
-  loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')), {allowedKeys: true});
+  loader.add(path.resolve(path.join(__dirname, '..', 'defaults.yaml')), { allowedKeys: true });
   if (argv.config) {
     argv.config = Array.isArray(argv.config) ? argv.config : [argv.config];
     argv.config.forEach(function(file) {
