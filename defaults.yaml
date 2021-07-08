@@ -31,6 +31,7 @@ codeHostingHandlers:
   github: 'http://localhost:3010'
   gitlab: 'http://localhost:3013'
   bitbucket: 'http://localhost:3012'
+  gitlab: 'http://localhost:3013'
 
 perBranchBuildLimit: 1
 
