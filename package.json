@@ -1,6 +1,6 @@
 {
   "name": "probo-reaper",
-  "version": "4.3.0",
+  "version": "5.0.0",
   "description": "Cleans up old Probo containers and ensures that only the allocated number of containers exist.",
   "main": "index.js",
   "bin": {
@@ -42,7 +42,7 @@
     "request": "^2.72.0",
     "request-promise": "^4.2.4",
     "through2": "^3.0.1",
-    "yaml-config-loader": "^2.0.1",
+    "yaml-config-loader": "^2.1.0",
     "yargs": "^3.30.0"
   },
   "devDependencies": {
