@@ -28,7 +28,7 @@
   "homepage": "https://github.com/ProboCI/probo-reaper#readme",
   "dependencies": {
     "JSONStream": "^1.0.6",
-    "async": "^1.5.2",
+    "async": "^2.6.4",
     "bluebird": "^3.0.5",
     "bunyan": "^1.8.15",
     "bytes": "^2.2.0",
