@@ -51,7 +51,7 @@
     "eslint-config-probo": "^2.0.0",
     "nyc": "^15.1.0",
     "memdown": "^4.1.0",
-    "mocha": "^8.3.0",
+    "mocha": "^10.1.0",
     "nock": "^13.0.8",
     "should": "^7.1.1"
   }
