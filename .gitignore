@@ -3,4 +3,5 @@ node_modules
 *.swp
 coverage
 data
+.DS_Store
 *.swo
