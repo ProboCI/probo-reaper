@@ -32,7 +32,7 @@ if [ -z "$1" ]; then
 fi
 
 echo -n "Hash: "
-docker build . -q -t $1/reaper:$tag
+docker build . -q -t $1/probo-reaper:$tag
 echo -n  "Repo: "
-docker push -q $1/reaper:$tag
+docker push -q $1/probo-reaper:$tag
 echo ""
