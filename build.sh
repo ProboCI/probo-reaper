@@ -34,5 +34,5 @@ fi
 echo -n "Hash: "
 docker build . -q -t $1/probo-reaper:$tag
 echo -n  "Repo: "
-docker push -q $1/probo-reaper:$tag
+#docker push -q $1/probo-reaper:$tag
 echo ""
