@@ -1,12 +1,11 @@
 #!/bin/bash
-
-echo ""
-echo "-----------------------------------------------------"
-echo "Building Probo Reaper Image"
-echo "-----------------------------------------------------"
+Cyan='\033[0;36m'
+Red='\033[0;31m'
+Green='\033[0;32m'
 
 help() {
-  echo "build.sh - script to build the Probo reaper image"
+  echo ""
+  echo "build.sh - Script to build and push a Dockerfile to a repository."
   echo ""
   echo "Usage:"
   echo "./build.sh <repository_name> <tag>"
@@ -16,7 +15,7 @@ help() {
   echo ""
   echo "Example: To build an image tagged 'dev' on a private registry with"
   echo "the 'probo' namespace:"
-  echo "./build.sh docker.example.com/probo dev"
+  echo "./build.sh docker.example.com/probo-reaper dev"
   echo ""
   exit 1;
 }
@@ -24,15 +23,29 @@ help() {
 if [ -n "$2" ]; then
   export tag=$2
 else
-  help
+  export tag="latest"
 fi
 
 if [ -z "$1" ]; then
   help
+else
+  export repo=$1
 fi
 
-echo -n "Hash: "
-docker build . -q -t $1/probo-reaper:$tag
-echo -n  "Repo: "
-#docker push -q $1/probo-reaper:$tag
-echo ""
+printf "${Cyan}Building Reaper..............................."
+stuff=`docker build . -q -t $1/probo-reaper:$tag`;
+if [[ $? == 0 ]]; then
+  printf "${Green}[ok]\n";
+else
+  printf "${Red}[error]\n";
+  exit 1;
+fi
+
+printf "${Cyan}Pushing Reaper................................"
+stuff=`docker push -q $1/probo-reaper:$tag`;
+if [[ $? == 0 ]]; then
+  printf "${Green}[ok]\n";
+else
+  printf "${Red}[error]\n";
+  exit 1;
+fi

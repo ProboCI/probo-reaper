@@ -7,6 +7,10 @@ apiServerPort: 3038
 
 dryRun: true
 
+# The time (epoch time) of when we should start looking for
+# reaped builds.
+highWaterMark: 0;
+
 # output format used for --status command:
 #  json: JSON output - one line per JSON object
 #  text: (default) - human readable hearchical output
