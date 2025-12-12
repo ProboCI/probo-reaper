@@ -27,7 +27,7 @@ else
 fi
 
 if [ -z "$1" ]; then
-  help
+  export repo=pronboci
 else
   export repo=$1
 fi

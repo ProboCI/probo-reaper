@@ -23,8 +23,19 @@ status: false
 
 githubPrCacheFile: prCache.json
 
-## Build server config
-dataDirectory: ./data
+# connection to the database api
+dbUrl: 'http://localhost:8442'
+
+# Build server config for a leveldb database (deprecated)
+# dataDirectory: ./data
+
+# MySQL server configration
+mysql:
+  host: 'localhost'
+  user: 'probo'
+  database: 'probo'
+  password: 'password'
+
 eventStreams:
   build_events:
     plugin: Memory
@@ -47,11 +58,10 @@ reaperCriteria:
       max: 0
 
 limitRuleExclutions: []
+
 # Allow any build where build.project.id == 1234 to escape normal restrictions.
 # limitRuleExclutions:
 #   - name: 'Probo likes you'
 #     pattern:
 #       project:
 #         id: 1234
-
-dbUrl: 'http://localhost:8442'
